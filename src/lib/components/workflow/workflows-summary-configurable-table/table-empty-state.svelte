@@ -24,9 +24,9 @@
   let hasTaskFailuresQuery = $derived(query === TASK_FAILURES_QUERY);
 
   const samples = [
+    'samples-typescript',
     'samples-go',
     'samples-java',
-    'samples-typescript',
     'samples-python',
     'samples-dotnet',
     'samples-php',
