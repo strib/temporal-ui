@@ -81,11 +81,14 @@ export const mockGlobalApis = (page: Page) => {
   ]);
 };
 
-export const mockWorkflowsApis = (page: Page) => {
+export const mockWorkflowsApis = (
+  page: Page,
+  workflowsOptions?: { empty?: boolean },
+) => {
   return Promise.all([
     mockGlobalApis(page),
     mockNamespaceApi(page),
-    mockWorkflowsApi(page),
+    mockWorkflowsApi(page, workflowsOptions),
     mockSearchAttributesApi(page),
     mockWorkflowsCountApi(page),
   ]);

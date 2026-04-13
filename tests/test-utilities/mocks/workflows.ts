@@ -83,11 +83,14 @@ const createMockWorkflow = () => {
 
 const mockWorkflows = Array.from({ length: 3 }, () => createMockWorkflow());
 
-export const mockWorkflowsApi = (page: Page) => {
+export const mockWorkflowsApi = (
+  page: Page,
+  options?: { empty?: boolean },
+) => {
   return page.route(WORKFLOWS_API, (route) => {
     return route.fulfill({
       json: {
-        executions: mockWorkflows,
+        executions: options?.empty ? [] : mockWorkflows,
         nextPageToken: null,
       },
     });
