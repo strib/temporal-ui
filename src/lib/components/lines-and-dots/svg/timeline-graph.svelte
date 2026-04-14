@@ -11,6 +11,7 @@
   import type { WorkflowExecution } from '$lib/types/workflows';
   import { isWorkflowDelayed } from '$lib/utilities/delayed-workflows';
   import { getFailedOrPendingGroups } from '$lib/utilities/get-failed-or-pending';
+  import { validTimeToMs } from '$lib/utilities/timeline-replay';
 
   import { TimelineConfig } from '../constants';
   import EndTimeInterval from '../end-time-interval.svelte';
@@ -21,36 +22,55 @@
   import TimelineGraphRow from './timeline-graph-row.svelte';
   import WorkflowRow from './workflow-row.svelte';
 
-  export let x = 0;
-  export let y = 0;
-  export let workflow: WorkflowExecution;
-  export let groups: EventGroups;
-  export let viewportHeight: number | undefined;
-  export let readOnly = false;
-  export let error: boolean = false;
+  type Props = {
+    x?: number;
+    y?: number;
+    workflow: WorkflowExecution;
+    groups: EventGroups;
+    viewportHeight: number | undefined;
+    readOnly?: boolean;
+    error?: boolean;
+    playbackNowMs?: number | null;
+  };
+
+  let {
+    x = 0,
+    y = 0,
+    workflow,
+    groups,
+    viewportHeight,
+    readOnly = false,
+    error = false,
+    playbackNowMs = null,
+  }: Props = $props();
 
   const { height, gutter, radius } = TimelineConfig;
 
-  let canvasWidth = 0;
-  let scrollY = 0;
+  let canvasWidth = $state(0);
+  let scrollY = $state(0);
 
-  $: expandedGroupHeight = readOnly ? 0 : $activeGroupHeight;
-  $: filteredGroups = getFailedOrPendingGroups(groups, $eventStatusFilter);
-  $: firstStartTime =
+  const expandedGroupHeight = $derived(readOnly ? 0 : $activeGroupHeight);
+  const filteredGroups = $derived(
+    getFailedOrPendingGroups(groups, $eventStatusFilter),
+  );
+  const firstStartTime = $derived(
     $fullEventHistory[0]?.eventTime < workflow.executionTime
       ? $fullEventHistory[0]?.eventTime
-      : workflow.executionTime;
-  $: startTime =
-    (!isWorkflowDelayed(workflow) && firstStartTime) || workflow.startTime;
-  $: timelineHeight =
-    Math.max(height * (filteredGroups.length + 2), 120) + expandedGroupHeight;
-  $: canvasHeight = timelineHeight + 120;
+      : workflow.executionTime,
+  );
+  const startTime = $derived(
+    (!isWorkflowDelayed(workflow) && firstStartTime) || workflow.startTime,
+  );
+  const timelineHeight = $derived(
+    Math.max(height * (filteredGroups.length + 2), 120) + expandedGroupHeight,
+  );
+  const canvasHeight = $derived(timelineHeight + 120);
 
-  const handleScroll = (e) => {
-    scrollY = e?.target?.scrollTop;
+  const handleScroll = (e: Event & { currentTarget: EventTarget & HTMLElement }) => {
+    scrollY = e?.currentTarget?.scrollTop ?? 0;
   };
 
-  $: activeGroupsHeightAboveGroup = (group: EventGroup) => {
+  const activeGroupsHeightAboveGroup = (group: EventGroup) => {
     const activeGroupIsAbove = $activeGroups?.filter((id) => {
       if ($eventFilterSort === 'ascending')
         return parseInt(id) < parseInt(group.id);
@@ -60,6 +80,20 @@
     if (!activeGroupIsAbove?.length) return 0;
     return expandedGroupHeight;
   };
+
+  const workflowStartMs = $derived(validTimeToMs(startTime));
+  const workflowEndMs = $derived(validTimeToMs(workflow.endTime));
+  const workflowLineEndX = $derived.by(() => {
+    if (playbackNowMs == null || workflowStartMs == null || workflowEndMs == null)
+      return null;
+    if (workflowEndMs <= workflowStartMs) return null;
+    if (playbackNowMs <= workflowStartMs) return null;
+    const timelineWidth = canvasWidth - 2 * gutter;
+    const ratio =
+      (playbackNowMs - workflowStartMs) / (workflowEndMs - workflowStartMs);
+    const x = Math.round(ratio * timelineWidth) + gutter;
+    return Math.min(canvasWidth - gutter, Math.max(gutter, x));
+  });
 </script>
 
 <div
@@ -109,7 +143,12 @@
         {startTime}
         {duration}
       />
-      <WorkflowRow {workflow} y={height} length={canvasWidth} />
+      <WorkflowRow
+        {workflow}
+        y={height}
+        length={canvasWidth}
+        lineEndX={workflowLineEndX}
+      />
       {#each filteredGroups as group, index (group.id)}
         {@const y = (index + 2) * height + activeGroupsHeightAboveGroup(group)}
         {#if !viewportHeight || (y > scrollY - 2 * height && y < scrollY + viewportHeight * height)}
@@ -121,6 +160,7 @@
               {startTime}
               {endTime}
               {readOnly}
+              {playbackNowMs}
             />
           {/key}
         {/if}

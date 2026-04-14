@@ -19,12 +19,9 @@
     isActivityTaskScheduledEvent,
     isActivityTaskStartedEvent,
   } from '$lib/utilities/is-event-type';
+  import { validTimeToMs } from '$lib/utilities/timeline-replay';
 
-  import {
-    CategoryIcon,
-    TimelineConfig,
-    timelineTextPosition,
-  } from '../constants';
+  import { CategoryIcon, TimelineConfig, timelineTextPosition } from '../constants';
 
   import Dot from './dot.svelte';
   import Line from './line.svelte';
@@ -37,6 +34,7 @@
     endTime: string | Date;
     canvasWidth: number;
     readOnly: boolean;
+    playbackNowMs?: number | null;
   };
 
   let {
@@ -46,6 +44,7 @@
     endTime,
     canvasWidth,
     readOnly = false,
+    playbackNowMs = null,
   }: Props = $props();
 
   const { height, gutter, radius } = TimelineConfig;
@@ -127,6 +126,36 @@
   const { points, textAnchor, textIndex, textPosition, backdrop } = $derived(
     getDistancePointsAndPositions(endTime, timelineWidth, y),
   );
+
+  const eventTimesMs = $derived.by(() => {
+    const times = group.eventList.map((e) => validTimeToMs(e.eventTime));
+    if (pauseTime) {
+      times.push(validTimeToMs(pauseTime));
+    }
+    return times;
+  });
+
+  const segmentEndX = (
+    px0: number,
+    px1: number,
+    t0: number | null,
+    t1: number | null,
+    playbackMs: number | null,
+  ): number | null => {
+    if (playbackMs == null || t0 == null || t1 == null || t1 <= t0) {
+      return px1;
+    }
+    if (playbackMs <= t0) return null;
+    if (playbackMs >= t1) return px1;
+    return px0 + ((playbackMs - t0) / (t1 - t0)) * (px1 - px0);
+  };
+
+  const dotVisible = (index: number) => {
+    if (playbackNowMs == null) return true;
+    const t = eventTimesMs[index];
+    if (t == null) return true;
+    return playbackNowMs >= t;
+  };
 
   const onClick = () => {
     if (readOnly) return;
@@ -218,22 +247,27 @@
       pointer-events="all"
     />
   {/if}
-  {#each points as x, index}
+  {#each points as x, index (index)}
     {@const nextPoint = points[index + 1]}
     {@const showText = textIndex === index}
     {#if nextPoint}
-      <Line
-        startPoint={[x, y]}
-        endPoint={[nextPoint, y]}
-        category={group.category}
-        classification={group.lastEvent.classification}
-        pending={!!pauseTime}
-        paused={!!pauseTime}
-        strokeWidth={radius * 2}
-        {retried}
-        scheduling={index === 0 &&
-          group.lastEvent.classification === 'Completed'}
-      />
+      {@const t0 = eventTimesMs[index]}
+      {@const t1 = eventTimesMs[index + 1]}
+      {@const lineEnd = segmentEndX(x, nextPoint, t0, t1, playbackNowMs)}
+      {#if lineEnd != null && lineEnd > x}
+        <Line
+          startPoint={[x, y]}
+          endPoint={[lineEnd, y]}
+          category={group.category}
+          classification={group.lastEvent.classification}
+          pending={!!pauseTime}
+          paused={!!pauseTime}
+          strokeWidth={radius * 2}
+          {retried}
+          scheduling={index === 0 &&
+            group.lastEvent.classification === 'Completed'}
+        />
+      {/if}
     {/if}
     {#if !nextPoint && group.isPending && !pauseTime}
       <Line
@@ -279,8 +313,7 @@
         >
           {#if pendingActivity}
             {translate('workflows.attempt')}
-            {pendingActivity.attempt} / {pendingActivity.maximumAttempts || '∞'}
-            {'• '}
+            {pendingActivity.attempt} / {pendingActivity.maximumAttempts || '∞'} •
             {decodedValue}
           {:else if retried}
             {activityTaskScheduled.attributes.attempt} • {decodedValue}
@@ -292,16 +325,18 @@
         </Text>
       </MetadataDecoder>
     {/if}
-    <Dot
-      point={[x, y]}
-      classification={group.eventList[index]?.classification}
-      icon={pauseTime && index !== 0
-        ? 'pause'
-        : decodedLocalActivity
-          ? CategoryIcon['local-activity'].name
-          : CategoryIcon[group.category].name}
-      r={radius}
-    />
+    {#if dotVisible(index)}
+      <Dot
+        point={[x, y]}
+        classification={group.eventList[index]?.classification}
+        icon={pauseTime && index !== 0
+          ? 'pause'
+          : decodedLocalActivity
+            ? CategoryIcon['local-activity'].name
+            : CategoryIcon[group.category].name}
+        r={radius}
+      />
+    {/if}
   {/each}
 </g>
 

@@ -140,6 +140,8 @@ export const Strings = {
   'pause-success': 'Workflow paused',
   'unpause-success': 'Workflow unpaused',
   'timeline-tab': 'Timeline',
+  'replay-timeline': 'Replay timeline',
+  'stop-timeline-replay': 'Stop replay',
   'history-tab': 'Event History',
   'workflow-history': 'Workflow History',
   'workers-tab': 'Workers',

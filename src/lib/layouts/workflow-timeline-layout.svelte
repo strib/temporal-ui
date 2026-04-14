@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
+
   import { beforeNavigate, goto } from '$app/navigation';
   import { page } from '$app/stores';
 
@@ -18,55 +20,144 @@
   import {
     currentEventHistory,
     filteredEventHistory,
+    fullEventHistory,
     pauseLiveUpdates,
   } from '$lib/stores/events';
   import { workflowRun } from '$lib/stores/workflow-run';
+  import { isWorkflowDelayed } from '$lib/utilities/delayed-workflows';
   import {
     parseEventFilterParams,
     updateEventFilterParams,
   } from '$lib/utilities/event-filter-params';
+  import { getMillisecondDuration } from '$lib/utilities/format-time';
   import { getWorkflowTaskFailedEvent } from '$lib/utilities/get-workflow-task-failed-event';
+  import {
+    filterEventsUpToTime,
+    replayDurationMs,
+    validTimeToMs,
+  } from '$lib/utilities/timeline-replay';
 
-  $: ({ namespace } = $page.params);
-  $: ({ workflow } = $workflowRun);
-  $: pendingActivities = workflow?.pendingActivities;
-  $: pendingNexusOperations = workflow?.pendingNexusOperations;
+  const namespace = $derived($page.params.namespace);
+  const workflow = $derived($workflowRun.workflow);
+  const pendingActivities = $derived(workflow?.pendingActivities);
+  const pendingNexusOperations = $derived(workflow?.pendingNexusOperations);
 
-  $: urlParams = parseEventFilterParams($page.url);
-  $: {
+  $effect(() => {
+    const urlParams = parseEventFilterParams($page.url);
     $eventFilterSort = urlParams.sort;
     $pauseLiveUpdates = urlParams.refresh_off;
-  }
+  });
 
-  $: reverseSort = $eventFilterSort === 'descending';
+  const reverseSort = $derived($eventFilterSort === 'descending');
 
-  $: ascendingGroups = groupEvents(
-    $filteredEventHistory,
-    'ascending',
-    pendingActivities,
-    pendingNexusOperations,
+  const ascendingGroups = $derived(
+    groupEvents(
+      $filteredEventHistory,
+      'ascending',
+      pendingActivities,
+      pendingNexusOperations,
+    ),
   );
 
-  $: groups = reverseSort ? [...ascendingGroups].reverse() : ascendingGroups;
-
-  $: workflowTaskFailedError = getWorkflowTaskFailedEvent(
-    $currentEventHistory,
-    'ascending',
+  const groups = $derived(
+    reverseSort ? [...ascendingGroups].reverse() : ascendingGroups,
   );
 
-  $: isNotPending = workflow && !workflow?.isRunning && !workflow?.isPaused;
+  const workflowTaskFailedError = $derived(
+    getWorkflowTaskFailedEvent($currentEventHistory, 'ascending'),
+  );
+
+  const isNotPending = $derived(
+    Boolean(workflow && !workflow?.isRunning && !workflow?.isPaused),
+  );
+
+  const firstStartTimeForReplay = $derived(
+    $fullEventHistory[0]?.eventTime < workflow?.executionTime
+      ? $fullEventHistory[0]?.eventTime
+      : workflow?.executionTime,
+  );
+  const replayTimelineStart = $derived(
+    workflow &&
+      ((!isWorkflowDelayed(workflow) && firstStartTimeForReplay) ||
+        workflow.startTime),
+  );
+
+  let isReplaying = $state(false);
+  let playbackNowMs = $state<number | null>(null);
+  let replayRaf: number | undefined;
+
+  const stopTimelineReplay = () => {
+    isReplaying = false;
+    playbackNowMs = null;
+    if (replayRaf != null) {
+      cancelAnimationFrame(replayRaf);
+      replayRaf = undefined;
+    }
+  };
+
+  const toggleTimelineReplay = () => {
+    if (!workflow || !replayTimelineStart || !workflow.endTime) return;
+    if (isReplaying) {
+      stopTimelineReplay();
+      return;
+    }
+    if (replayRaf != null) {
+      cancelAnimationFrame(replayRaf);
+      replayRaf = undefined;
+    }
+    const startMs = validTimeToMs(replayTimelineStart);
+    const endMs = validTimeToMs(workflow.endTime);
+    if (startMs == null || endMs == null || endMs <= startMs) return;
+    const spanMs = getMillisecondDuration({
+      start: replayTimelineStart,
+      end: workflow.endTime,
+      onlyUnderSecond: false,
+    });
+    if (spanMs == null) return;
+    const wallMs = replayDurationMs(spanMs);
+    playbackNowMs = startMs;
+    isReplaying = true;
+    const wallStart = performance.now();
+    const tick = (now: number) => {
+      if (!isReplaying) return;
+      const t = Math.min(1, (now - wallStart) / wallMs);
+      playbackNowMs = startMs + t * (endMs - startMs);
+      if (t >= 1) {
+        stopTimelineReplay();
+        return;
+      }
+      replayRaf = requestAnimationFrame(tick);
+    };
+    replayRaf = requestAnimationFrame(tick);
+  };
+
+  const replayGroups = $derived(
+    isReplaying
+      ? groupEvents(
+          filterEventsUpToTime($fullEventHistory, playbackNowMs ?? 0),
+          'ascending',
+          pendingActivities,
+          pendingNexusOperations,
+        )
+      : groups,
+  );
 
   beforeNavigate(() => {
     clearActives();
+    stopTimelineReplay();
   });
 
-  $: {
+  onDestroy(() => {
+    stopTimelineReplay();
+  });
+
+  $effect(() => {
     if (isNotPending && $pauseLiveUpdates) {
       $pauseLiveUpdates = false;
     }
-  }
+  });
 
-  let showDownloadPrompt = false;
+  let showDownloadPrompt = $state(false);
 
   const onSort = () => {
     const newSort = reverseSort ? 'ascending' : 'descending';
@@ -137,18 +228,113 @@
         >
           {translate('common.download')}
         </ToggleButton>
+        <ToggleButton
+          data-testid="timeline-replay"
+          leadingIcon="play"
+          size="sm"
+          active={isReplaying}
+          disabled={!isNotPending}
+          on:click={toggleTimelineReplay}
+        >
+          {isReplaying
+            ? translate('workflows.stop-timeline-replay')
+            : translate('workflows.replay-timeline')}
+        </ToggleButton>
       </ToggleButtons>
     </div>
   </div>
   <div class="flex w-full flex-col">
     <TimelineGraph
       {workflow}
-      {groups}
+      groups={replayGroups}
       viewportHeight={undefined}
       error={Boolean(workflowTaskFailedError)}
+      playbackNowMs={isReplaying ? playbackNowMs : null}
     />
   </div>
 </div>
+{#if isReplaying}
+  <div
+    class="pointer-events-none fixed bottom-6 right-6 z-[60] flex flex-col items-center gap-1"
+    aria-hidden="true"
+  >
+    <svg
+      class="chicken-dance h-16 w-16 text-amber-400 drop-shadow-md"
+      viewBox="0 0 64 64"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <ellipse cx="32" cy="48" rx="14" ry="10" fill="currentColor" />
+      <circle cx="32" cy="22" r="14" fill="currentColor" />
+      <path
+        d="M18 18 L10 12 M46 18 L54 12"
+        stroke="currentColor"
+        stroke-width="4"
+        stroke-linecap="round"
+        class="chicken-wing"
+      />
+      <path
+        d="M22 40 L12 52 M42 40 L52 52"
+        stroke="currentColor"
+        stroke-width="4"
+        stroke-linecap="round"
+        class="chicken-leg"
+      />
+      <polygon points="26,10 30,4 34,10" fill="#f97316" />
+    </svg>
+    <span class="rounded bg-primary/90 px-2 py-0.5 text-xs text-primary">
+      {translate('workflows.replay-timeline')}
+    </span>
+  </div>
+{/if}
+
+<style lang="postcss">
+  .chicken-dance {
+    animation: chicken-bob 0.35s ease-in-out infinite alternate;
+    transform-origin: center bottom;
+  }
+
+  .chicken-wing {
+    animation: chicken-flap 0.25s ease-in-out infinite alternate;
+    transform-origin: 32px 18px;
+  }
+
+  .chicken-leg {
+    animation: chicken-kick 0.3s ease-in-out infinite alternate;
+    transform-origin: 32px 44px;
+  }
+
+  @keyframes chicken-bob {
+    from {
+      transform: translateY(0) rotate(-4deg);
+    }
+
+    to {
+      transform: translateY(-6px) rotate(4deg);
+    }
+  }
+
+  @keyframes chicken-flap {
+    from {
+      transform: rotate(-6deg);
+    }
+
+    to {
+      transform: rotate(8deg);
+    }
+  }
+
+  @keyframes chicken-kick {
+    from {
+      transform: translateX(0);
+    }
+
+    to {
+      transform: translateX(3px);
+    }
+  }
+</style>
+
 <DownloadEventHistoryModal
   bind:open={showDownloadPrompt}
   {namespace}
