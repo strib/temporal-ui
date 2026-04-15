@@ -343,6 +343,8 @@ export const Strings = {
   'scheduled-by': 'Scheduled By',
   'auto-refresh-on': 'Auto Refresh On',
   'auto-refresh-off': 'Auto Refresh Off',
+  'replay-start': 'Replay',
+  'replay-stop': 'Stop Replay',
   minimized: 'Minimized',
   expanded: 'Expanded',
   'timeline-minimized':

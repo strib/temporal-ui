@@ -2,6 +2,7 @@
   import { beforeNavigate, goto } from '$app/navigation';
   import { page } from '$app/stores';
 
+  import DancingChicken from '$lib/components/lines-and-dots/dancing-chicken.svelte';
   import EventHistoryLegend from '$lib/components/lines-and-dots/event-history-legend.svelte';
   import EventTypeFilter from '$lib/components/lines-and-dots/event-type-filter.svelte';
   import TimelineGraph from '$lib/components/lines-and-dots/svg/timeline-graph.svelte';
@@ -20,6 +21,11 @@
     filteredEventHistory,
     pauseLiveUpdates,
   } from '$lib/stores/events';
+  import {
+    replayActive,
+    startReplay,
+    stopReplay,
+  } from '$lib/stores/timeline-replay';
   import { workflowRun } from '$lib/stores/workflow-run';
   import {
     parseEventFilterParams,
@@ -55,9 +61,11 @@
   );
 
   $: isNotPending = workflow && !workflow?.isRunning && !workflow?.isPaused;
+  $: canReplay = workflow?.status === 'Completed';
 
   beforeNavigate(() => {
     clearActives();
+    stopReplay();
   });
 
   $: {
@@ -79,6 +87,14 @@
       { refresh_off: !$pauseLiveUpdates },
       goto,
     );
+  };
+
+  const onReplayToggle = () => {
+    if ($replayActive) {
+      stopReplay();
+    } else {
+      startReplay();
+    }
   };
 </script>
 
@@ -137,7 +153,28 @@
         >
           {translate('common.download')}
         </ToggleButton>
+        {#if canReplay}
+          <ToggleButton
+            data-testid="replay"
+            leadingIcon={$replayActive ? 'pause' : 'play'}
+            size="sm"
+            active={$replayActive}
+            on:click={onReplayToggle}
+          >
+            {$replayActive
+              ? translate('workflows.replay-stop')
+              : translate('workflows.replay-start')}
+          </ToggleButton>
+        {/if}
       </ToggleButtons>
+      {#if canReplay && $replayActive}
+        <div
+          class="flex items-center gap-1"
+          data-testid="replay-chicken-indicator"
+        >
+          <DancingChicken size={32} dancing />
+        </div>
+      {/if}
     </div>
   </div>
   <div class="flex w-full flex-col">

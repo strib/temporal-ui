@@ -8,11 +8,16 @@
   import { eventFilterSort } from '$lib/stores/event-view';
   import { fullEventHistory } from '$lib/stores/events';
   import { eventStatusFilter } from '$lib/stores/filters';
+  import {
+    replayActive,
+    replayProgress,
+  } from '$lib/stores/timeline-replay';
   import type { WorkflowExecution } from '$lib/types/workflows';
   import { isWorkflowDelayed } from '$lib/utilities/delayed-workflows';
   import { getFailedOrPendingGroups } from '$lib/utilities/get-failed-or-pending';
 
   import { TimelineConfig } from '../constants';
+  import DancingChicken from '../dancing-chicken.svelte';
   import EndTimeInterval from '../end-time-interval.svelte';
 
   import GroupDetailsRow from './group-details-row.svelte';
@@ -49,6 +54,9 @@
   const handleScroll = (e) => {
     scrollY = e?.target?.scrollTop;
   };
+
+  $: timelineWidth = Math.max(canvasWidth - 2 * gutter, 0);
+  $: playheadX = gutter + timelineWidth * $replayProgress;
 
   $: activeGroupsHeightAboveGroup = (group: EventGroup) => {
     const activeGroupIsAbove = $activeGroups?.filter((id) => {
@@ -92,6 +100,13 @@
       class="-mt-4"
       class:error
     >
+      {#if $replayActive}
+        <defs>
+          <clipPath id="timeline-replay-clip">
+            <rect x="0" y="0" width={playheadX} height={canvasHeight} />
+          </clipPath>
+        </defs>
+      {/if}
       <Line
         startPoint={[gutter, 0]}
         endPoint={[gutter, timelineHeight]}
@@ -109,8 +124,11 @@
         {startTime}
         {duration}
       />
-      <WorkflowRow {workflow} y={height} length={canvasWidth} />
-      {#each filteredGroups as group, index (group.id)}
+      <g
+        clip-path={$replayActive ? 'url(#timeline-replay-clip)' : undefined}
+      >
+        <WorkflowRow {workflow} y={height} length={canvasWidth} />
+        {#each filteredGroups as group, index (group.id)}
         {@const y = (index + 2) * height + activeGroupsHeightAboveGroup(group)}
         {#if !viewportHeight || (y > scrollY - 2 * height && y < scrollY + viewportHeight * height)}
           {#key group.eventList.length}
@@ -128,6 +146,25 @@
           <GroupDetailsRow y={y + 1.33 * radius} {group} {canvasWidth} />
         {/if}
       {/each}
+      </g>
+      {#if $replayActive}
+        <line
+          class="replay-playhead"
+          x1={playheadX}
+          x2={playheadX}
+          y1={0}
+          y2={timelineHeight}
+        />
+        <foreignObject
+          x={playheadX - 28}
+          y={-12}
+          width={56}
+          height={56}
+          class="pointer-events-none"
+        >
+          <DancingChicken size={56} dancing />
+        </foreignObject>
+      {/if}
     </svg>
   </EndTimeInterval>
 </div>
@@ -135,5 +172,12 @@
 <style lang="postcss">
   .error {
     @apply bg-danger;
+  }
+
+  .replay-playhead {
+    stroke: #ef4444;
+    stroke-width: 2;
+    stroke-dasharray: 4 4;
+    opacity: 0.85;
   }
 </style>
