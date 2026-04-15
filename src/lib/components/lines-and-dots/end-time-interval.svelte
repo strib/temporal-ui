@@ -8,6 +8,7 @@
 
   export let workflow: WorkflowExecution;
   export let startTime: string | Timestamp;
+  export let overrideEndTime: string | Date | null = null;
 
   const rightNow = () => {
     const now = new Date();
@@ -15,7 +16,7 @@
     return now;
   };
 
-  $: endTime = workflow?.endTime || rightNow();
+  $: endTime = overrideEndTime ?? (workflow?.endTime || rightNow());
   $: duration = getMillisecondDuration({
     start: startTime,
     end: endTime,
@@ -31,8 +32,11 @@
     }
   };
 
-  const startStopInterval = (pauseLiveUpdates) => {
-    if (pauseLiveUpdates) {
+  const startStopInterval = (
+    pauseLiveUpdates: boolean,
+    hasOverride: boolean,
+  ) => {
+    if (pauseLiveUpdates || hasOverride) {
       clearInterval(endTimeInterval);
       endTimeInterval = null;
     } else if (!endTimeInterval && (workflow.isRunning || workflow.isPaused)) {
@@ -43,7 +47,7 @@
   };
 
   $: clearEndTimeInterval(workflow.endTime);
-  $: startStopInterval($pauseLiveUpdates);
+  $: startStopInterval($pauseLiveUpdates, !!overrideEndTime);
 
   onDestroy(() => {
     clearInterval(endTimeInterval);
