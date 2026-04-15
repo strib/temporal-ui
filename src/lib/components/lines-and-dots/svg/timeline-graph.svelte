@@ -152,8 +152,8 @@
             fill="#fbbf24"
           />
           <DancingChicken
-            x={replayIndicatorX}
-            y={height / 2 - radius * 3}
+            x={replayIndicatorX + radius}
+            y={height / 2 - radius * 4.5}
             active={replayActive}
           />
         </g>
