@@ -7,6 +7,7 @@
   import BottomNavigation from '$lib/components/bottom-nav.svelte';
   import DataEncoderSettings from '$lib/components/data-encoder-settings.svelte';
   import NamespacePicker from '$lib/components/namespace-picker.svelte';
+  import Replay2026Banner from '$lib/components/replay-2026-banner.svelte';
   import SideNavigation from '$lib/components/side-nav.svelte';
   import SkipNavigation from '$lib/components/skip-nav.svelte';
   import TopNavigation from '$lib/components/top-nav.svelte';
@@ -288,6 +289,8 @@
 
 <DarkMode />
 <SkipNavigation />
+
+<Replay2026Banner />
 
 <div class="flex w-screen flex-row">
   <Toaster
