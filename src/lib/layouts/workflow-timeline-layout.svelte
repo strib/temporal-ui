@@ -99,11 +99,10 @@
     }
     const elapsed = performance.now() - replayStartedAt;
     const phase = (elapsed % replayLoopMs) / replayLoopMs;
-    const t = replaySpanMs * phase;
-    const next = new Date(
-      new Date(replayTimelineStart as string).getTime() + t,
-    );
-    replayOverrideEndTime = next;
+    const startMs = new Date(replayTimelineStart as string).getTime();
+    const endMs = startMs + replaySpanMs * phase;
+    const safeEndMs = Math.min(startMs + replaySpanMs, Math.max(startMs + 1, endMs));
+    replayOverrideEndTime = new Date(safeEndMs);
     replayRaf = requestAnimationFrame(runTimelineReplayFrame);
   };
 
