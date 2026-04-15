@@ -1,5 +1,4 @@
 <script lang="ts">
-  import Button from '$lib/holocene/button.svelte';
   import { translate } from '$lib/i18n/translate';
 
   const replayUrl = 'https://replay.temporal.io/';
@@ -10,21 +9,20 @@
   data-testid="replay-2026-banner"
 >
   <div
-    class="flex w-full flex-col items-start justify-between gap-3 px-4 py-3 sm:flex-row sm:items-center sm:px-6 lg:px-8"
+    class="mx-auto flex w-full max-w-screen-2xl flex-col items-start justify-between gap-3 px-4 py-3 sm:flex-row sm:items-center sm:px-6 lg:px-8"
   >
     <p class="text-sm font-medium md:text-base">
       {translate('common.replay-2026-banner-message')}
     </p>
-    <Button
+    <a
       href={replayUrl}
       target="_blank"
-      size="sm"
-      variant="secondary"
-      class="border-white/20 bg-white/10 text-white hover:bg-white/20 focus-visible:bg-white/20"
+      rel="noreferrer noopener"
+      class="inline-flex items-center gap-2 rounded-sm bg-white px-4 py-2 text-sm font-semibold text-indigo-900 no-underline shadow-sm transition-colors hover:bg-indigo-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
       data-testid="replay-2026-banner-cta"
-      rel="noreferrer"
     >
-      {translate('common.replay-2026-banner-cta')}
-    </Button>
+      <span>{translate('common.replay-2026-banner-cta')}</span>
+      <span aria-hidden="true">-></span>
+    </a>
   </div>
 </section>

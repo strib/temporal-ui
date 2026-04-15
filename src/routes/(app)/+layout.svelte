@@ -289,6 +289,7 @@
 
 <DarkMode />
 <SkipNavigation />
+<Replay2026Banner />
 
 <div class="flex w-screen flex-row">
   <Toaster
@@ -315,7 +316,6 @@
   </div>
   <MainContentContainer>
     <DataEncoderSettings />
-    <Replay2026Banner />
     <TopNavigation>
       {#snippet left()}
         {#if showNamespacePicker}
