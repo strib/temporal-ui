@@ -28,6 +28,7 @@
   export let viewportHeight: number | undefined;
   export let readOnly = false;
   export let error: boolean = false;
+  export let replayOverrideEndTime: string | Date | null = null;
 
   const { height, gutter, radius } = TimelineConfig;
 
@@ -69,7 +70,13 @@
   style={viewportHeight ? `max-height: ${viewportHeight}px;` : ''}
   on:scroll={handleScroll}
 >
-  <EndTimeInterval {workflow} {startTime} let:endTime let:duration>
+  <EndTimeInterval
+    {workflow}
+    {startTime}
+    overrideEndTime={replayOverrideEndTime}
+    let:endTime
+    let:duration
+  >
     <div
       class="pointer-events-none sticky top-[120px]"
       class:invisible={!!$activeGroups.length}
