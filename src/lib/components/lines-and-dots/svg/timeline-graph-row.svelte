@@ -368,6 +368,6 @@
   }
 
   .replay-active {
-    filter: drop-shadow(0 0 10px rgb(196 181 253 / 0.75));
+    filter: drop-shadow(0 0 10px rgb(196 181 253 / 75%));
   }
 </style>

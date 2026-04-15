@@ -40,6 +40,7 @@
 
   $: expandedGroupHeight = readOnly ? 0 : $activeGroupHeight;
   $: filteredGroups = getFailedOrPendingGroups(groups, $eventStatusFilter);
+  $: timelineWidth = canvasWidth - 2 * gutter;
   $: firstStartTime =
     $fullEventHistory[0]?.eventTime < workflow.executionTime
       ? $fullEventHistory[0]?.eventTime
@@ -60,12 +61,14 @@
           Math.min(
             Math.max(
               (replayCurrentTimeMs - replayTimelineStartTimeMs) /
-                Math.max(replayTimelineEndTimeMs - replayTimelineStartTimeMs, 1),
+                Math.max(
+                  replayTimelineEndTimeMs - replayTimelineStartTimeMs,
+                  1,
+                ),
               0,
             ),
             1,
-          ) *
-            timelineWidth,
+          ) * timelineWidth,
         ) + gutter;
 
   const handleScroll = (e) => {

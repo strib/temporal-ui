@@ -14,6 +14,8 @@ export type ReplayWindow = {
   durationMs: number;
 };
 
+export const MIN_REPLAY_PLAYBACK_DURATION_MS = 1800;
+
 const replayableCategories = new Set(['activity', 'local-activity']);
 
 export const isReplayableActivityGroup = (
@@ -73,14 +75,29 @@ export const getReplayWindow = (
 ): ReplayWindow | null => {
   if (!activities.length) return null;
 
-  const startTimeMs = Math.min(...activities.map((activity) => activity.startTimeMs));
-  const endTimeMs = Math.max(...activities.map((activity) => activity.endTimeMs));
+  const startTimeMs = Math.min(
+    ...activities.map((activity) => activity.startTimeMs),
+  );
+  const endTimeMs = Math.max(
+    ...activities.map((activity) => activity.endTimeMs),
+  );
+
+  const durationMs = Math.max(endTimeMs - startTimeMs, 0);
+  if (durationMs <= 0) {
+    return null;
+  }
 
   return {
     startTimeMs,
     endTimeMs,
-    durationMs: Math.max(endTimeMs - startTimeMs, 0),
+    durationMs,
   };
+};
+
+export const getReplayPlaybackDurationMs = (
+  replayWindow: ReplayWindow,
+): number => {
+  return Math.max(replayWindow.durationMs, MIN_REPLAY_PLAYBACK_DURATION_MS);
 };
 
 export const getReplayState = (

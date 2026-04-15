@@ -1,7 +1,8 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
+
   import { beforeNavigate, goto } from '$app/navigation';
   import { page } from '$app/stores';
-  import { onDestroy } from 'svelte';
 
   import EventHistoryLegend from '$lib/components/lines-and-dots/event-history-legend.svelte';
   import EventTypeFilter from '$lib/components/lines-and-dots/event-type-filter.svelte';
@@ -25,6 +26,7 @@
   import { workflowRun } from '$lib/stores/workflow-run';
   import {
     getReplayActivities,
+    getReplayPlaybackDurationMs,
     getReplayWindow,
   } from '$lib/utilities/activity-replay';
   import {
@@ -56,6 +58,9 @@
   $: groups = reverseSort ? [...ascendingGroups].reverse() : ascendingGroups;
   $: replayActivities = getReplayActivities(ascendingGroups);
   $: replayWindow = getReplayWindow(replayActivities);
+  $: replayPlaybackDurationMs = replayWindow
+    ? getReplayPlaybackDurationMs(replayWindow)
+    : 0;
 
   $: workflowTaskFailedError = getWorkflowTaskFailedEvent(
     $currentEventHistory,
@@ -64,7 +69,9 @@
 
   $: isNotPending = workflow && !workflow?.isRunning && !workflow?.isPaused;
   $: canReplayActivities =
-    workflow?.status === 'Completed' && replayActivities.length > 0 && !!replayWindow;
+    workflow?.status === 'Completed' &&
+    replayActivities.length > 0 &&
+    !!replayWindow;
 
   let replayAnimationFrame = 0;
   let replayStartedAt = 0;
@@ -115,7 +122,12 @@
     }
 
     const elapsed = now - replayStartedAt;
-    const nextReplayTime = replayWindow.startTimeMs + elapsed;
+    const progress = Math.min(
+      elapsed / Math.max(replayPlaybackDurationMs, 1),
+      1,
+    );
+    const nextReplayTime =
+      replayWindow.startTimeMs + replayWindow.durationMs * progress;
 
     if (nextReplayTime >= replayWindow.endTimeMs) {
       replayCurrentTimeMs = replayWindow.endTimeMs;
@@ -162,7 +174,10 @@
     );
   };
 
-  $: if (!canReplayActivities && (replayActive || replayCurrentTimeMs !== null)) {
+  $: if (
+    !canReplayActivities &&
+    (replayActive || replayCurrentTimeMs !== null)
+  ) {
     stopReplay();
   }
 

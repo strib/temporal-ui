@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   getReplayActivities,
+  getReplayPlaybackDurationMs,
   getReplayState,
   getReplayWindow,
+  MIN_REPLAY_PLAYBACK_DURATION_MS,
   toReplayTimeMs,
 } from './activity-replay';
 
@@ -71,5 +73,23 @@ describe('activity replay utilities', () => {
     expect(getReplayState(activity, 1000)).toBe('active');
     expect(getReplayState(activity, 2500)).toBe('active');
     expect(getReplayState(activity, 3500)).toBe('completed');
+  });
+
+  it('uses a minimum visible playback duration', () => {
+    expect(
+      getReplayPlaybackDurationMs({
+        startTimeMs: 1000,
+        endTimeMs: 1017,
+        durationMs: 17,
+      }),
+    ).toBe(MIN_REPLAY_PLAYBACK_DURATION_MS);
+
+    expect(
+      getReplayPlaybackDurationMs({
+        startTimeMs: 1000,
+        endTimeMs: 4000,
+        durationMs: 3000,
+      }),
+    ).toBe(3000);
   });
 });
