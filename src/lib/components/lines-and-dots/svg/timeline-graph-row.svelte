@@ -10,6 +10,11 @@
   import type { EventGroup } from '$lib/models/event-groups/event-groups';
   import { setActiveGroup } from '$lib/stores/active-events';
   import {
+    getReplayState,
+    isReplayableActivityGroup,
+    toReplayTimeMs,
+  } from '$lib/utilities/activity-replay';
+  import {
     decodeLocalActivity,
     getLocalActivityMarkerEvent,
   } from '$lib/utilities/decode-local-activity';
@@ -37,6 +42,7 @@
     endTime: string | Date;
     canvasWidth: number;
     readOnly: boolean;
+    replayCurrentTimeMs?: number | null;
   };
 
   let {
@@ -46,6 +52,7 @@
     endTime,
     canvasWidth,
     readOnly = false,
+    replayCurrentTimeMs = null,
   }: Props = $props();
 
   const { height, gutter, radius } = TimelineConfig;
@@ -150,6 +157,31 @@
     activityTaskScheduled && activityTaskScheduled.attributes?.attempt > 1,
   );
   const pendingLine = $derived(group.isPending || !!pauseTime);
+  const replayableActivity = $derived(isReplayableActivityGroup(group));
+  const replayStartTimeMs = $derived(
+    group.eventList
+      .map((event) => toReplayTimeMs(event.eventTime))
+      .filter((time): time is number => time !== null)
+      .sort((left, right) => left - right)[0] ?? null,
+  );
+  const replayEndTimeMs = $derived(
+    group.eventList
+      .map((event) => toReplayTimeMs(event.eventTime))
+      .filter((time): time is number => time !== null)
+      .sort((left, right) => right - left)[0] ?? null,
+  );
+  const replayState = $derived(
+    replayableActivity && replayStartTimeMs !== null && replayEndTimeMs !== null
+      ? getReplayState(
+          {
+            id: group.id,
+            startTimeMs: replayStartTimeMs,
+            endTimeMs: replayEndTimeMs,
+          },
+          replayCurrentTimeMs,
+        )
+      : 'idle',
+  );
 
   const multiEventHoverWidth = $derived(
     points.length >= 2 && points[points.length - 1] - points[0] + radius * 3,
@@ -203,8 +235,24 @@
   onmouseenter={onMouseEnter}
   onmouseleave={onMouseLeave}
   class="relative cursor-pointer"
+  class:replay-upcoming={replayState === 'upcoming'}
+  class:replay-active={replayState === 'active'}
+  class:replay-completed={replayState === 'completed'}
   {height}
 >
+  {#if replayState === 'active'}
+    <rect
+      x={gutter - radius * 2}
+      y={y - height / 1.25}
+      width={canvasWidth - 2 * gutter + radius * 4}
+      height={height * 1.6}
+      rx={radius * 2}
+      fill="rgba(167, 139, 250, 0.12)"
+      stroke="rgba(196, 181, 253, 0.75)"
+      stroke-width="1.5"
+      pointer-events="none"
+    />
+  {/if}
   {#if pendingLine}
     {@const width = pauseTime
       ? points[1] - points[0]
@@ -309,5 +357,17 @@
   g {
     pointer-events: bounding-box;
     outline: none;
+  }
+
+  .replay-upcoming {
+    opacity: 0.22;
+  }
+
+  .replay-completed {
+    opacity: 0.65;
+  }
+
+  .replay-active {
+    filter: drop-shadow(0 0 10px rgb(196 181 253 / 0.75));
   }
 </style>

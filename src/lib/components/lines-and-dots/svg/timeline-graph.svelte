@@ -9,12 +9,14 @@
   import { fullEventHistory } from '$lib/stores/events';
   import { eventStatusFilter } from '$lib/stores/filters';
   import type { WorkflowExecution } from '$lib/types/workflows';
+  import { toReplayTimeMs } from '$lib/utilities/activity-replay';
   import { isWorkflowDelayed } from '$lib/utilities/delayed-workflows';
   import { getFailedOrPendingGroups } from '$lib/utilities/get-failed-or-pending';
 
   import { TimelineConfig } from '../constants';
   import EndTimeInterval from '../end-time-interval.svelte';
 
+  import DancingChicken from './dancing-chicken.svelte';
   import GroupDetailsRow from './group-details-row.svelte';
   import Line from './line.svelte';
   import TimelineAxis from './timeline-axis.svelte';
@@ -28,6 +30,8 @@
   export let viewportHeight: number | undefined;
   export let readOnly = false;
   export let error: boolean = false;
+  export let replayCurrentTimeMs: number | null = null;
+  export let replayActive = false;
 
   const { height, gutter, radius } = TimelineConfig;
 
@@ -45,6 +49,24 @@
   $: timelineHeight =
     Math.max(height * (filteredGroups.length + 2), 120) + expandedGroupHeight;
   $: canvasHeight = timelineHeight + 120;
+  $: replayTimelineStartTimeMs = toReplayTimeMs(startTime);
+  $: replayTimelineEndTimeMs = toReplayTimeMs(workflow.endTime);
+  $: replayIndicatorX =
+    replayCurrentTimeMs === null ||
+    replayTimelineStartTimeMs === null ||
+    replayTimelineEndTimeMs === null
+      ? null
+      : Math.round(
+          Math.min(
+            Math.max(
+              (replayCurrentTimeMs - replayTimelineStartTimeMs) /
+                Math.max(replayTimelineEndTimeMs - replayTimelineStartTimeMs, 1),
+              0,
+            ),
+            1,
+          ) *
+            timelineWidth,
+        ) + gutter;
 
   const handleScroll = (e) => {
     scrollY = e?.target?.scrollTop;
@@ -109,6 +131,30 @@
         {startTime}
         {duration}
       />
+      {#if replayIndicatorX !== null}
+        <g data-testid="activity-replay-indicator" class="pointer-events-none">
+          <line
+            x1={replayIndicatorX}
+            x2={replayIndicatorX}
+            y1={height / 2}
+            y2={timelineHeight}
+            stroke="#fbbf24"
+            stroke-width="2"
+            stroke-dasharray="4 4"
+          />
+          <circle
+            cx={replayIndicatorX}
+            cy={height / 2}
+            r={radius}
+            fill="#fbbf24"
+          />
+          <DancingChicken
+            x={replayIndicatorX}
+            y={height / 2 - radius * 3}
+            active={replayActive}
+          />
+        </g>
+      {/if}
       <WorkflowRow {workflow} y={height} length={canvasWidth} />
       {#each filteredGroups as group, index (group.id)}
         {@const y = (index + 2) * height + activeGroupsHeightAboveGroup(group)}
@@ -121,6 +167,7 @@
               {startTime}
               {endTime}
               {readOnly}
+              {replayCurrentTimeMs}
             />
           {/key}
         {/if}

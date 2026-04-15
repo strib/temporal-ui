@@ -1,6 +1,7 @@
 <script lang="ts">
   import { beforeNavigate, goto } from '$app/navigation';
   import { page } from '$app/stores';
+  import { onDestroy } from 'svelte';
 
   import EventHistoryLegend from '$lib/components/lines-and-dots/event-history-legend.svelte';
   import EventTypeFilter from '$lib/components/lines-and-dots/event-type-filter.svelte';
@@ -9,6 +10,7 @@
   import DownloadEventHistoryModal from '$lib/components/workflow/download-event-history-modal.svelte';
   import InputAndResults from '$lib/components/workflow/input-and-results.svelte';
   import WorkflowCallbacks from '$lib/components/workflow/workflow-callbacks.svelte';
+  import Button from '$lib/holocene/button.svelte';
   import ToggleButton from '$lib/holocene/toggle-button/toggle-button.svelte';
   import ToggleButtons from '$lib/holocene/toggle-button/toggle-buttons.svelte';
   import { translate } from '$lib/i18n/translate';
@@ -21,6 +23,10 @@
     pauseLiveUpdates,
   } from '$lib/stores/events';
   import { workflowRun } from '$lib/stores/workflow-run';
+  import {
+    getReplayActivities,
+    getReplayWindow,
+  } from '$lib/utilities/activity-replay';
   import {
     parseEventFilterParams,
     updateEventFilterParams,
@@ -48,6 +54,8 @@
   );
 
   $: groups = reverseSort ? [...ascendingGroups].reverse() : ascendingGroups;
+  $: replayActivities = getReplayActivities(ascendingGroups);
+  $: replayWindow = getReplayWindow(replayActivities);
 
   $: workflowTaskFailedError = getWorkflowTaskFailedEvent(
     $currentEventHistory,
@@ -55,9 +63,18 @@
   );
 
   $: isNotPending = workflow && !workflow?.isRunning && !workflow?.isPaused;
+  $: canReplayActivities =
+    workflow?.status === 'Completed' && replayActivities.length > 0 && !!replayWindow;
+
+  let replayAnimationFrame = 0;
+  let replayStartedAt = 0;
+  let replayCurrentTimeMs: number | null = null;
+  let replayActive = false;
+  let replayResetTimeout: ReturnType<typeof setTimeout> | null = null;
 
   beforeNavigate(() => {
     clearActives();
+    stopReplay();
   });
 
   $: {
@@ -67,6 +84,70 @@
   }
 
   let showDownloadPrompt = false;
+
+  const stopReplay = (reset = true) => {
+    if (replayAnimationFrame) {
+      cancelAnimationFrame(replayAnimationFrame);
+    }
+
+    if (replayResetTimeout) {
+      clearTimeout(replayResetTimeout);
+    }
+
+    replayAnimationFrame = 0;
+    replayStartedAt = 0;
+    replayActive = false;
+    replayResetTimeout = null;
+
+    if (reset) {
+      replayCurrentTimeMs = null;
+    }
+  };
+
+  const stepReplay = (now: number) => {
+    if (!replayWindow) {
+      stopReplay();
+      return;
+    }
+
+    if (!replayStartedAt) {
+      replayStartedAt = now;
+    }
+
+    const elapsed = now - replayStartedAt;
+    const nextReplayTime = replayWindow.startTimeMs + elapsed;
+
+    if (nextReplayTime >= replayWindow.endTimeMs) {
+      replayCurrentTimeMs = replayWindow.endTimeMs;
+      replayActive = false;
+      replayAnimationFrame = 0;
+      replayStartedAt = 0;
+      replayResetTimeout = setTimeout(() => {
+        replayCurrentTimeMs = null;
+        replayResetTimeout = null;
+      }, 900);
+      return;
+    }
+
+    replayCurrentTimeMs = nextReplayTime;
+    replayAnimationFrame = requestAnimationFrame(stepReplay);
+  };
+
+  const toggleActivityReplay = () => {
+    if (replayActive) {
+      stopReplay();
+      return;
+    }
+
+    if (!replayWindow) {
+      return;
+    }
+
+    stopReplay();
+    replayActive = true;
+    replayCurrentTimeMs = replayWindow.startTimeMs;
+    replayAnimationFrame = requestAnimationFrame(stepReplay);
+  };
 
   const onSort = () => {
     const newSort = reverseSort ? 'ascending' : 'descending';
@@ -80,6 +161,14 @@
       goto,
     );
   };
+
+  $: if (!canReplayActivities && (replayActive || replayCurrentTimeMs !== null)) {
+    stopReplay();
+  }
+
+  onDestroy(() => {
+    stopReplay();
+  });
 </script>
 
 <InputAndResults />
@@ -105,6 +194,20 @@
       <EventHistoryLegend />
     </div>
     <div class="flex items-center gap-2">
+      {#if canReplayActivities}
+        <Button
+          size="sm"
+          variant="secondary"
+          active={replayActive}
+          data-testid="activity-replay-button"
+          leadingIcon={replayActive ? 'pause' : 'play'}
+          on:click={toggleActivityReplay}
+        >
+          {replayActive
+            ? translate('workflows.stop-activity-replay')
+            : translate('workflows.replay-activities')}
+        </Button>
+      {/if}
       <ToggleButtons>
         <ToggleButton
           leadingIcon={reverseSort ? 'descending' : 'ascending'}
@@ -146,6 +249,8 @@
       {groups}
       viewportHeight={undefined}
       error={Boolean(workflowTaskFailedError)}
+      {replayCurrentTimeMs}
+      {replayActive}
     />
   </div>
 </div>
