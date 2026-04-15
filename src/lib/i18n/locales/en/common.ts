@@ -218,4 +218,7 @@ export const Strings = {
   'slack-community': 'Slack Community',
   'community-forum': 'Community Forum',
   'change-log': 'Change Log',
+  'replay-2026-banner-message':
+    'Join us at Temporal Replay 2026 in San Francisco, May 5-7.',
+  'replay-2026-banner-cta': 'Register now',
 } as const;
