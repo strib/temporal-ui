@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
+
   import Replay2026Banner from '$lib/components/replay-2026-banner.svelte';
 
   interface Props {
