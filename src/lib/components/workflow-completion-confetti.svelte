@@ -10,22 +10,24 @@
     delay: number;
     rotation: number;
     drift: number;
+    restingTop: number;
   };
 
   const colors = ['#1ff1a5', '#14b8a6', '#facc15', '#fb7185', '#60a5fa'];
-  const pieceCount = 120;
-  const animationDuration = 4600;
+  const pieceCount = 180;
+  const animationDuration = 5200;
 
   const createPieces = (): ConfettiPiece[] => {
     return Array.from({ length: pieceCount }, (_, id) => ({
       id,
       color: colors[id % colors.length],
       left: Math.random() * 100,
-      size: 6 + Math.random() * 9,
-      duration: 2400 + Math.random() * 1600,
+      size: 8 + Math.random() * 12,
+      duration: 3000 + Math.random() * 1600,
       delay: Math.random() * 450,
       rotation: Math.random() * 360,
-      drift: (Math.random() - 0.5) * 70,
+      drift: (Math.random() - 0.5) * 90,
+      restingTop: 8 + Math.random() * 76,
     }));
   };
 
@@ -54,7 +56,7 @@
   >
     {#each pieces as piece (piece.id)}
       <span
-        class="confetti-piece absolute top-0 block rounded-sm"
+        class="confetti-piece absolute block rounded-sm"
         style:--confetti-color={piece.color}
         style:--confetti-left={`${piece.left}%`}
         style:--confetti-size={`${piece.size}px`}
@@ -62,6 +64,7 @@
         style:--confetti-delay={`${piece.delay}ms`}
         style:--confetti-rotation={`${piece.rotation}deg`}
         style:--confetti-drift={`${piece.drift}vw`}
+        style:--confetti-resting-top={`${piece.restingTop}vh`}
       ></span>
     {/each}
   </div>
@@ -69,6 +72,7 @@
 
 <style>
   .confetti-piece {
+    top: -20px;
     left: var(--confetti-left);
     width: var(--confetti-size);
     height: calc(var(--confetti-size) * 1.7);
@@ -95,7 +99,9 @@
   @media (prefers-reduced-motion: reduce) {
     .confetti-piece {
       animation: none;
-      opacity: 0;
+      top: var(--confetti-resting-top);
+      opacity: 1;
+      transform: rotate(var(--confetti-rotation));
     }
   }
 </style>
