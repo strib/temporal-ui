@@ -3,6 +3,7 @@
 
   import { page } from '$app/stores';
 
+  import WorkflowCompletionConfetti from '$lib/components/workflow/workflow-completion-confetti.svelte';
   import WorkflowError from '$lib/components/workflow/workflow-error.svelte';
   import CopyButton from '$lib/holocene/copyable/button.svelte';
   import SkeletonWorkflow from '$lib/holocene/skeleton/workflow.svelte';
@@ -35,6 +36,7 @@
   import { copyToClipboard } from '$lib/utilities/copy-to-clipboard';
   import { decodeSingleReadablePayloadWithCodec } from '$lib/utilities/decode-payload';
   import { stringifyWithBigInt } from '$lib/utilities/parse-with-big-int';
+  import { shouldTriggerWorkflowCompletionConfetti } from '$lib/utilities/should-trigger-workflow-completion-confetti';
 
   $: ({ namespace, workflow: workflowId, run: runId } = $page.params);
   $: showJson = $page.url.searchParams.has('json');
@@ -43,6 +45,9 @@
   let workflowError: NetworkError | null = null;
   let workflowRunController: AbortController;
   let refreshInterval: ReturnType<typeof setInterval> | null = null;
+  let completionConfettiBursts = 0;
+  let previousWorkflowStatus: WorkflowExecution['status'] = null;
+  let previousWorkflowRunId: string | null = null;
 
   const { copy, copied } = copyToClipboard();
 
@@ -183,6 +188,25 @@
   };
 
   $: setCurrentEvents($fullEventHistory, $pauseLiveUpdates);
+  $: currentWorkflow = $workflowRun.workflow;
+  $: if (currentWorkflow) {
+    if (
+      shouldTriggerWorkflowCompletionConfetti({
+        previousStatus: previousWorkflowStatus,
+        nextStatus: currentWorkflow.status,
+        previousRunId: previousWorkflowRunId,
+        nextRunId: currentWorkflow.runId,
+      })
+    ) {
+      completionConfettiBursts += 1;
+    }
+
+    previousWorkflowStatus = currentWorkflow.status;
+    previousWorkflowRunId = currentWorkflow.runId;
+  } else {
+    previousWorkflowStatus = null;
+    previousWorkflowRunId = null;
+  }
 
   onMount(() => {
     const sort = $page.url.searchParams.get('sort');
@@ -215,6 +239,7 @@
 {:else if !$workflowRun.workflow}
   <SkeletonWorkflow />
 {:else}
+  <WorkflowCompletionConfetti burstCount={completionConfettiBursts} />
   <WorkflowHeader />
   <slot />
 {/if}
