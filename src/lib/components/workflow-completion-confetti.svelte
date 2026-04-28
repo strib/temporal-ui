@@ -14,7 +14,7 @@
 
   const colors = ['#1ff1a5', '#14b8a6', '#facc15', '#fb7185', '#60a5fa'];
   const pieceCount = 120;
-  const animationDuration = 2600;
+  const animationDuration = 4600;
 
   const createPieces = (): ConfettiPiece[] => {
     return Array.from({ length: pieceCount }, (_, id) => ({
@@ -22,8 +22,8 @@
       color: colors[id % colors.length],
       left: Math.random() * 100,
       size: 6 + Math.random() * 9,
-      duration: 1800 + Math.random() * 1200,
-      delay: Math.random() * 350,
+      duration: 2400 + Math.random() * 1600,
+      delay: Math.random() * 450,
       rotation: Math.random() * 360,
       drift: (Math.random() - 0.5) * 70,
     }));
