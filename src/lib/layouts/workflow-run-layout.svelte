@@ -32,6 +32,7 @@
   } from '$lib/stores/workflow-run';
   import type { NetworkError } from '$lib/types/global';
   import type { WorkflowExecution } from '$lib/types/workflows';
+  import { celebrateWorkflowCompletion } from '$lib/utilities/celebrate-completion';
   import { copyToClipboard } from '$lib/utilities/copy-to-clipboard';
   import { decodeSingleReadablePayloadWithCodec } from '$lib/utilities/decode-payload';
   import { stringifyWithBigInt } from '$lib/utilities/parse-with-big-int';
@@ -43,6 +44,8 @@
   let workflowError: NetworkError | null = null;
   let workflowRunController: AbortController;
   let refreshInterval: ReturnType<typeof setInterval> | null = null;
+  let previousStatus: WorkflowExecution['status'] | undefined = undefined;
+  let celebratedRunId: string | null = null;
 
   const { copy, copied } = copyToClipboard();
 
@@ -169,9 +172,29 @@
     resetLastDataEncoderSuccess();
     clearInterval(refreshInterval);
     refreshInterval = null;
+    previousStatus = undefined;
+    celebratedRunId = null;
+  };
+
+  const celebrateOnCompletion = (
+    status: WorkflowExecution['status'] | undefined,
+    currentRunId: string,
+  ) => {
+    if (
+      status === 'Completed' &&
+      previousStatus &&
+      previousStatus !== 'Completed' &&
+      celebratedRunId !== currentRunId
+    ) {
+      celebratedRunId = currentRunId;
+      celebrateWorkflowCompletion();
+    }
+    previousStatus = status;
   };
 
   $: (runId, clearWorkflowData());
+
+  $: celebrateOnCompletion($workflowRun?.workflow?.status, runId);
 
   $: getWorkflowAndEventHistory(namespace, workflowId, runId);
   $: getOnlyWorkflowWithPendingActivities($refresh, $pauseLiveUpdates);
