@@ -23,7 +23,8 @@
   let { status = null }: Props = $props();
 
   let particles = $state<Particle[]>([]);
-  let previousStatus: WorkflowStatus | undefined = status;
+  let previousStatus: WorkflowStatus | undefined = undefined;
+  let hasObservedStatus = false;
   let reduceMotion = false;
   let cleanupTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -67,6 +68,12 @@
   };
 
   $effect(() => {
+    if (!hasObservedStatus) {
+      previousStatus = status;
+      hasObservedStatus = true;
+      return;
+    }
+
     if (
       previousStatus !== undefined &&
       previousStatus !== 'Completed' &&
