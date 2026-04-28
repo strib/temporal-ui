@@ -15,9 +15,9 @@ export const shouldTriggerWorkflowCompletionConfetti = ({
 }: Parameters): boolean =>
   Boolean(
     previousRunId &&
-      nextRunId &&
-      previousRunId === nextRunId &&
-      previousStatus &&
-      previousStatus !== 'Completed' &&
-      nextStatus === 'Completed',
+    nextRunId &&
+    previousRunId === nextRunId &&
+    previousStatus &&
+    previousStatus !== 'Completed' &&
+    nextStatus === 'Completed',
   );

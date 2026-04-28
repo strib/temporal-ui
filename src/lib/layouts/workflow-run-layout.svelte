@@ -9,7 +9,6 @@
   import SkeletonWorkflow from '$lib/holocene/skeleton/workflow.svelte';
   import { translate } from '$lib/i18n/translate';
   import WorkflowHeader from '$lib/layouts/workflow-header.svelte';
-  import { Action } from '$lib/models/workflow-actions';
   import {
     fetchAllEvents,
     throttleRefresh,
@@ -151,6 +150,7 @@
         workflowId,
         runId,
       });
+
       if (error) {
         workflowError = error;
         return;
@@ -176,7 +176,10 @@
     refreshInterval = null;
   };
 
-  $: (runId, clearWorkflowData());
+  $: {
+    runId;
+    clearWorkflowData();
+  }
 
   $: getWorkflowAndEventHistory(namespace, workflowId, runId);
   $: getOnlyWorkflowWithPendingActivities($refresh, $pauseLiveUpdates);
