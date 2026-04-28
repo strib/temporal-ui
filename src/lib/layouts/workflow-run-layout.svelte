@@ -8,7 +8,6 @@
   import SkeletonWorkflow from '$lib/holocene/skeleton/workflow.svelte';
   import { translate } from '$lib/i18n/translate';
   import WorkflowHeader from '$lib/layouts/workflow-header.svelte';
-  import { Action } from '$lib/models/workflow-actions';
   import {
     fetchAllEvents,
     throttleRefresh,
@@ -35,6 +34,10 @@
   import { copyToClipboard } from '$lib/utilities/copy-to-clipboard';
   import { decodeSingleReadablePayloadWithCodec } from '$lib/utilities/decode-payload';
   import { stringifyWithBigInt } from '$lib/utilities/parse-with-big-int';
+  import {
+    fireWorkflowCompletedConfetti,
+    shouldCelebrateWorkflowCompletion,
+  } from '$lib/utilities/workflow-completed-confetti';
 
   $: ({ namespace, workflow: workflowId, run: runId } = $page.params);
   $: showJson = $page.url.searchParams.has('json');
@@ -43,6 +46,27 @@
   let workflowError: NetworkError | null = null;
   let workflowRunController: AbortController;
   let refreshInterval: ReturnType<typeof setInterval> | null = null;
+
+  let workflowStatusTrackingKey = '';
+  let lastObservedWorkflowStatus: string | undefined;
+
+  $: {
+    const wf = $workflowRun.workflow;
+    const routeKey = `${namespace}/${workflowId}/${runId}`;
+    if (!wf) {
+      workflowStatusTrackingKey = '';
+      lastObservedWorkflowStatus = undefined;
+    } else if (workflowStatusTrackingKey !== routeKey) {
+      workflowStatusTrackingKey = routeKey;
+      lastObservedWorkflowStatus = wf.status;
+    } else {
+      const prev = lastObservedWorkflowStatus;
+      if (shouldCelebrateWorkflowCompletion(prev, wf.status, wf.isRunning)) {
+        void fireWorkflowCompletedConfetti();
+      }
+      lastObservedWorkflowStatus = wf.status;
+    }
+  }
 
   const { copy, copied } = copyToClipboard();
 
