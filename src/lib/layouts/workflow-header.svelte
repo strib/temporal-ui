@@ -1,6 +1,8 @@
 <script lang="ts">
   import { fly } from 'svelte/transition';
 
+  import confetti from 'canvas-confetti';
+
   import { page } from '$app/state';
 
   import CodecServerErrorBanner from '$lib/components/codec-server-error-banner.svelte';
@@ -57,6 +59,48 @@
     id: eventId,
   } = $derived(page.params);
   const { workflow, workers } = $derived($workflowRun);
+
+  let previousStatus: string | null | undefined;
+
+  function fireConfetti() {
+    const duration = 3000;
+    const end = Date.now() + duration;
+
+    const frame = () => {
+      confetti({
+        particleCount: 3,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0, y: 0.6 },
+        colors: ['#22c55e', '#16a34a', '#4ade80', '#86efac', '#fbbf24'],
+      });
+      confetti({
+        particleCount: 3,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1, y: 0.6 },
+        colors: ['#22c55e', '#16a34a', '#4ade80', '#86efac', '#fbbf24'],
+      });
+
+      if (Date.now() < end) {
+        requestAnimationFrame(frame);
+      }
+    };
+
+    frame();
+  }
+
+  $effect(() => {
+    const currentStatus = workflow?.status;
+    if (
+      previousStatus &&
+      previousStatus !== 'Completed' &&
+      currentStatus === 'Completed'
+    ) {
+      fireConfetti();
+    }
+    previousStatus = currentStatus;
+  });
   const routeParameters = $derived({
     namespace,
     workflow: workflowId,
