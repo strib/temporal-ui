@@ -4,6 +4,7 @@
   import { page } from '$app/stores';
 
   import WorkflowError from '$lib/components/workflow/workflow-error.svelte';
+  import WorkflowCompletionConfetti from '$lib/components/workflow-completion-confetti.svelte';
   import CopyButton from '$lib/holocene/copyable/button.svelte';
   import SkeletonWorkflow from '$lib/holocene/skeleton/workflow.svelte';
   import { translate } from '$lib/i18n/translate';
@@ -35,6 +36,7 @@
   import { copyToClipboard } from '$lib/utilities/copy-to-clipboard';
   import { decodeSingleReadablePayloadWithCodec } from '$lib/utilities/decode-payload';
   import { stringifyWithBigInt } from '$lib/utilities/parse-with-big-int';
+  import { shouldBurstWorkflowCompletionConfetti } from '$lib/utilities/workflow-completion-confetti';
 
   $: ({ namespace, workflow: workflowId, run: runId } = $page.params);
   $: showJson = $page.url.searchParams.has('json');
@@ -43,6 +45,9 @@
   let workflowError: NetworkError | null = null;
   let workflowRunController: AbortController;
   let refreshInterval: ReturnType<typeof setInterval> | null = null;
+  let previousWorkflowStatus: WorkflowExecution['status'] | undefined;
+  let showCompletionConfetti = false;
+  let completionConfettiKey = 0;
 
   const { copy, copied } = copyToClipboard();
 
@@ -165,6 +170,8 @@
     $timelineEvents = null;
     $workflowRun = initialWorkflowRun;
     workflowError = undefined;
+    previousWorkflowStatus = undefined;
+    showCompletionConfetti = false;
     abortPolling();
     resetLastDataEncoderSuccess();
     clearInterval(refreshInterval);
@@ -182,7 +189,24 @@
     }
   };
 
+  const burstCompletionConfetti = (
+    currentStatus: WorkflowExecution['status'] | undefined,
+  ) => {
+    if (
+      shouldBurstWorkflowCompletionConfetti(
+        previousWorkflowStatus,
+        currentStatus,
+      )
+    ) {
+      completionConfettiKey += 1;
+      showCompletionConfetti = true;
+    }
+
+    previousWorkflowStatus = currentStatus;
+  };
+
   $: setCurrentEvents($fullEventHistory, $pauseLiveUpdates);
+  $: burstCompletionConfetti($workflowRun.workflow?.status);
 
   onMount(() => {
     const sort = $page.url.searchParams.get('sort');
@@ -215,6 +239,11 @@
 {:else if !$workflowRun.workflow}
   <SkeletonWorkflow />
 {:else}
+  {#if showCompletionConfetti}
+    {#key completionConfettiKey}
+      <WorkflowCompletionConfetti />
+    {/key}
+  {/if}
   <WorkflowHeader />
   <slot />
 {/if}
