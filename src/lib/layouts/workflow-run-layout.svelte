@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { onDestroy, onMount } from 'svelte';
+  import confetti from 'canvas-confetti';
+  import { BROWSER } from 'esm-env';
+  import { afterUpdate, onDestroy, onMount } from 'svelte';
 
   import { page } from '$app/stores';
 
@@ -31,10 +33,11 @@
     workflowRun,
   } from '$lib/stores/workflow-run';
   import type { NetworkError } from '$lib/types/global';
-  import type { WorkflowExecution } from '$lib/types/workflows';
+  import type { WorkflowExecution, WorkflowStatus } from '$lib/types/workflows';
   import { copyToClipboard } from '$lib/utilities/copy-to-clipboard';
   import { decodeSingleReadablePayloadWithCodec } from '$lib/utilities/decode-payload';
   import { stringifyWithBigInt } from '$lib/utilities/parse-with-big-int';
+  import { shouldFireWorkflowCompletedConfetti } from '$lib/utilities/workflow-completion-confetti';
 
   $: ({ namespace, workflow: workflowId, run: runId } = $page.params);
   $: showJson = $page.url.searchParams.has('json');
@@ -43,6 +46,21 @@
   let workflowError: NetworkError | null = null;
   let workflowRunController: AbortController;
   let refreshInterval: ReturnType<typeof setInterval> | null = null;
+  let previousWorkflowStatus: WorkflowStatus | null = null;
+
+  const fireCompletionConfetti = () => {
+    const count = 200;
+    const defaults = { origin: { y: 0.65 } };
+    confetti({ ...defaults, particleCount: count, spread: 26, startVelocity: 55 });
+    confetti({ ...defaults, particleCount: count, spread: 60, startVelocity: 45 });
+    confetti({
+      ...defaults,
+      particleCount: count,
+      spread: 100,
+      decay: 0.91,
+      scalar: 0.8,
+    });
+  };
 
   const { copy, copied } = copyToClipboard();
 
@@ -183,6 +201,19 @@
   };
 
   $: setCurrentEvents($fullEventHistory, $pauseLiveUpdates);
+
+  afterUpdate(() => {
+    if (!BROWSER || showJson) return;
+    const workflow = $workflowRun.workflow;
+    const status = workflow?.status ?? null;
+    if (
+      workflow &&
+      shouldFireWorkflowCompletedConfetti(previousWorkflowStatus, status)
+    ) {
+      fireCompletionConfetti();
+    }
+    previousWorkflowStatus = workflow ? status : null;
+  });
 
   onMount(() => {
     const sort = $page.url.searchParams.get('sort');
