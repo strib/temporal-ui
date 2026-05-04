@@ -105,6 +105,13 @@ test.describe('Workflow History', () => {
 
     await page.goto(workflowUrl);
     await expect(page.getByTestId('workflow-status')).toContainText('Running');
+    await page.evaluate(() => {
+      (
+        window as typeof window & {
+          __TEMPORAL_WORKFLOW_COMPLETION_CONFETTI_DURATION__?: number;
+        }
+      ).__TEMPORAL_WORKFLOW_COMPLETION_CONFETTI_DURATION__ = 60000;
+    });
 
     await page.unroute(
       /\/api\/v1\/namespaces\/[^/]+\/workflows\/[^/]+(\?.*)?$/,
