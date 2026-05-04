@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { BROWSER } from 'esm-env';
   import { onDestroy, onMount } from 'svelte';
 
   import { page } from '$app/stores';
@@ -8,7 +9,6 @@
   import SkeletonWorkflow from '$lib/holocene/skeleton/workflow.svelte';
   import { translate } from '$lib/i18n/translate';
   import WorkflowHeader from '$lib/layouts/workflow-header.svelte';
-  import { Action } from '$lib/models/workflow-actions';
   import {
     fetchAllEvents,
     throttleRefresh,
@@ -28,13 +28,18 @@
     initialWorkflowRun,
     refresh,
     type RefreshAction,
+    triggerRefresh,
     workflowRun,
   } from '$lib/stores/workflow-run';
   import type { NetworkError } from '$lib/types/global';
-  import type { WorkflowExecution } from '$lib/types/workflows';
+  import type { WorkflowExecution, WorkflowStatus } from '$lib/types/workflows';
   import { copyToClipboard } from '$lib/utilities/copy-to-clipboard';
   import { decodeSingleReadablePayloadWithCodec } from '$lib/utilities/decode-payload';
   import { stringifyWithBigInt } from '$lib/utilities/parse-with-big-int';
+  import {
+    blastWorkflowCompletionConfetti,
+    shouldFireWorkflowCompletionConfetti,
+  } from '$lib/utilities/workflow-completion-confetti';
 
   $: ({ namespace, workflow: workflowId, run: runId } = $page.params);
   $: showJson = $page.url.searchParams.has('json');
@@ -190,6 +195,34 @@
     refreshInterval = setInterval(() => {
       throttleRefresh();
     }, 10000);
+
+    let previousStatus: WorkflowStatus | null | undefined = undefined;
+    const unsubscribe = workflowRun.subscribe((state) => {
+      const next = state.workflow?.status ?? null;
+      if (shouldFireWorkflowCompletionConfetti(previousStatus, next)) {
+        void blastWorkflowCompletionConfetti();
+      }
+      previousStatus = next;
+    });
+
+    let testRefreshHandler: (() => void) | undefined;
+    if (import.meta.env.MODE === 'test.integration' && BROWSER) {
+      testRefreshHandler = () => triggerRefresh();
+      window.addEventListener(
+        'temporal-test-trigger-workflow-refresh',
+        testRefreshHandler,
+      );
+    }
+
+    return () => {
+      unsubscribe();
+      if (testRefreshHandler) {
+        window.removeEventListener(
+          'temporal-test-trigger-workflow-refresh',
+          testRefreshHandler,
+        );
+      }
+    };
   });
 
   onDestroy(() => {
