@@ -32,6 +32,7 @@
   } from '$lib/stores/workflow-run';
   import type { NetworkError } from '$lib/types/global';
   import type { WorkflowExecution } from '$lib/types/workflows';
+  import { celebrateWorkflowCompletion } from '$lib/utilities/confetti';
   import { copyToClipboard } from '$lib/utilities/copy-to-clipboard';
   import { decodeSingleReadablePayloadWithCodec } from '$lib/utilities/decode-payload';
   import { stringifyWithBigInt } from '$lib/utilities/parse-with-big-int';
@@ -141,6 +142,7 @@
       (refresh.action || (!pause && $workflowRun?.workflow?.isRunning));
 
     if (shouldFetch) {
+      const previousStatus = $workflowRun?.workflow?.status;
       const { workflow, error } = await fetchWorkflow({
         namespace,
         workflowId,
@@ -150,6 +152,11 @@
         workflowError = error;
         return;
       }
+      celebrateWorkflowCompletion(
+        workflow?.runId ?? runId,
+        previousStatus,
+        workflow?.status,
+      );
       $workflowRun.workflow = workflow;
     }
   };
