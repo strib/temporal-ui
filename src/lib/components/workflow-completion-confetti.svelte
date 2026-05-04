@@ -29,11 +29,7 @@
       rotation: `${(index * 47) % 360}deg`,
       size: `${size}px`,
       shape:
-        shapeIndex === 0
-          ? 'circle'
-          : shapeIndex === 1
-            ? 'square'
-            : 'ribbon',
+        shapeIndex === 0 ? 'circle' : shapeIndex === 1 ? 'square' : 'ribbon',
     };
   });
 
