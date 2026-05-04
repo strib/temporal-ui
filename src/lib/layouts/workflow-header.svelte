@@ -8,6 +8,7 @@
   import { timestamp } from '$lib/components/timestamp.svelte';
   import WorkflowCallStackError from '$lib/components/workflow/workflow-call-stack-error.svelte';
   import WorkflowActions from '$lib/components/workflow-actions.svelte';
+  import WorkflowCompletionConfetti from '$lib/components/workflow-completion-confetti.svelte';
   import WorkflowStatus from '$lib/components/workflow-status.svelte';
   import Alert from '$lib/holocene/alert.svelte';
   import Badge from '$lib/holocene/badge.svelte';
@@ -99,7 +100,36 @@
   );
   const linkCount = $derived(outboundLinks + inboundLinks);
   const sharedFilterParams = $derived(getSharedFilterParams(page.url));
+
+  let completionConfettiTrigger = $state(0);
+  let previousWorkflowRunId = $state<string | undefined>();
+  let previousWorkflowStatus = $state<string | undefined>();
+
+  $effect(() => {
+    const currentRunId = workflow?.runId;
+    const currentStatus = workflow?.status;
+
+    if (!currentRunId || !currentStatus) return;
+
+    if (previousWorkflowRunId !== currentRunId) {
+      previousWorkflowRunId = currentRunId;
+      previousWorkflowStatus = currentStatus;
+      return;
+    }
+
+    if (
+      currentStatus === 'Completed' &&
+      previousWorkflowStatus &&
+      previousWorkflowStatus !== 'Completed'
+    ) {
+      completionConfettiTrigger += 1;
+    }
+
+    previousWorkflowStatus = currentStatus;
+  });
 </script>
+
+<WorkflowCompletionConfetti trigger={completionConfettiTrigger} />
 
 <div class="flex items-center justify-between">
   <div class="flex items-center gap-2">

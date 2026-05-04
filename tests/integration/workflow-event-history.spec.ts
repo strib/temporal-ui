@@ -1,9 +1,24 @@
 import { expect, test } from '@playwright/test';
 
-import { mockWorkflowApis } from '~/test-utilities/mock-apis';
+import {
+  mockEventHistoryApi,
+  mockNamespaceApis,
+  mockTaskQueuesApi,
+  mockWorkflowApis,
+  WORKFLOW_API,
+} from '~/test-utilities/mock-apis';
 import { mockWorkflow } from '~/test-utilities/mocks/workflow';
 
 const workflowUrl = `/namespaces/default/workflows/${mockWorkflow.workflowExecutionInfo.execution.workflowId}/${mockWorkflow.workflowExecutionInfo.execution.runId}/history`;
+const completedWorkflow = {
+  ...mockWorkflow,
+  pendingActivities: [],
+  workflowExecutionInfo: {
+    ...mockWorkflow.workflowExecutionInfo,
+    closeTime: '2022-04-28T05:50:58.264756929Z',
+    status: 'WORKFLOW_EXECUTION_STATUS_COMPLETED',
+  },
+};
 
 test.describe('Workflow History', () => {
   test.beforeEach(async ({ page }) => {
@@ -84,5 +99,34 @@ test.describe('Workflow History', () => {
     await expect(page.getByTestId('compact')).toBeVisible();
     await expect(page.getByTestId('json')).toBeVisible();
     await expect(page.getByTestId('event-summary-table')).toBeVisible();
+  });
+
+  test('blasts confetti when a running workflow reaches completion', async ({
+    page,
+  }) => {
+    let workflowRequestCount = 0;
+
+    await Promise.all([
+      mockNamespaceApis(page),
+      mockEventHistoryApi(page),
+      mockTaskQueuesApi(page),
+      page.route(WORKFLOW_API, (route) => {
+        workflowRequestCount += 1;
+
+        return route.fulfill({
+          json: workflowRequestCount === 1 ? mockWorkflow : completedWorkflow,
+        });
+      }),
+    ]);
+
+    await page.goto(workflowUrl);
+
+    await expect(page.getByTestId('workflow-status')).toContainText(
+      'Completed',
+    );
+    await expect(
+      page.getByTestId('workflow-completion-confetti'),
+    ).toBeVisible();
+    await expect(page.locator('.confetti-piece')).toHaveCount(140);
   });
 });
