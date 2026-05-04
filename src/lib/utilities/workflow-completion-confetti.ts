@@ -1,4 +1,4 @@
-import { browser } from 'esm-env';
+import { BROWSER } from 'esm-env';
 
 import type { WorkflowStatus } from '$lib/types/workflows';
 
@@ -12,7 +12,7 @@ export function shouldCelebrateWorkflowCompletion(
 }
 
 export async function blastWorkflowCompletionConfetti(): Promise<void> {
-  if (!browser) return;
+  if (!BROWSER) return;
 
   const confetti = (await import('canvas-confetti')).default;
   const duration = 2500;
