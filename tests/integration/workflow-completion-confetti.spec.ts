@@ -1,14 +1,16 @@
 import { expect, test } from '@playwright/test';
 
 import {
-  EVENT_HISTORY_API,
-  EVENT_HISTORY_API_REVERSE,
   mockNamespaceApis,
   mockTaskQueuesApi,
   mockWorkflowApis,
   WORKFLOW_API,
 } from '~/test-utilities/mock-apis';
-import { mockEventHistory } from '~/test-utilities/mocks/event-history';
+import {
+  EVENT_HISTORY_API,
+  EVENT_HISTORY_API_REVERSE,
+  mockEventHistory,
+} from '~/test-utilities/mocks/event-history';
 import {
   mockCompletedWorkflow,
   mockRunningWorkflow,
@@ -52,7 +54,9 @@ test.describe('Workflow completion confetti', () => {
 
     await page.route(WORKFLOW_API, async (route) => {
       const response =
-        requestCount === 0 ? mockRunningWorkflow : completedWorkflowForRunningRun;
+        requestCount === 0
+          ? mockRunningWorkflow
+          : completedWorkflowForRunningRun;
       requestCount += 1;
 
       await route.fulfill({ json: response });
@@ -86,8 +90,12 @@ test.describe('Workflow completion confetti', () => {
 
     releaseHistory!();
 
-    await expect(page.getByTestId('workflow-status')).toContainText('Completed');
-    await expect(page.getByTestId('workflow-completion-confetti')).toBeVisible();
+    await expect(page.getByTestId('workflow-status')).toContainText(
+      'Completed',
+    );
+    await expect(
+      page.getByTestId('workflow-completion-confetti'),
+    ).toBeVisible();
     await expect(
       page.getByTestId('workflow-completion-confetti'),
     ).toHaveAttribute('data-burst', '1');
@@ -106,7 +114,9 @@ test.describe('Workflow completion confetti', () => {
     await mockWorkflowApis(page, completedWorkflow);
     await page.goto(workflowUrl);
 
-    await expect(page.getByTestId('workflow-status')).toContainText('Completed');
+    await expect(page.getByTestId('workflow-status')).toContainText(
+      'Completed',
+    );
     await expect(page.getByTestId('workflow-completion-confetti')).toHaveCount(
       0,
     );

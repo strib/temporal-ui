@@ -2,7 +2,7 @@ import { Page } from '@playwright/test';
 
 import { GetWorkflowExecutionHistoryResponse } from '$src/lib/types/events';
 
-const mockEventHistory = {
+export const mockEventHistory = {
   history: {
     events: [
       {
