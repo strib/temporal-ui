@@ -3,6 +3,7 @@
 
   import { page } from '$app/stores';
 
+  import WorkflowCompletionConfetti from '$lib/components/workflow-completion-confetti.svelte';
   import WorkflowError from '$lib/components/workflow/workflow-error.svelte';
   import CopyButton from '$lib/holocene/copyable/button.svelte';
   import SkeletonWorkflow from '$lib/holocene/skeleton/workflow.svelte';
@@ -215,6 +216,10 @@
 {:else if !$workflowRun.workflow}
   <SkeletonWorkflow />
 {:else}
+  <WorkflowCompletionConfetti
+    status={$workflowRun.workflow.status}
+    runId={$workflowRun.workflow.runId}
+  />
   <WorkflowHeader />
   <slot />
 {/if}
