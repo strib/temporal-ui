@@ -31,10 +31,14 @@
     workflowRun,
   } from '$lib/stores/workflow-run';
   import type { NetworkError } from '$lib/types/global';
-  import type { WorkflowExecution } from '$lib/types/workflows';
+  import type { WorkflowExecution, WorkflowStatus } from '$lib/types/workflows';
   import { copyToClipboard } from '$lib/utilities/copy-to-clipboard';
   import { decodeSingleReadablePayloadWithCodec } from '$lib/utilities/decode-payload';
   import { stringifyWithBigInt } from '$lib/utilities/parse-with-big-int';
+  import {
+    fireWorkflowCompletionConfetti,
+    shouldCelebrateWorkflowCompletion,
+  } from '$lib/utilities/workflow-completion-confetti';
 
   $: ({ namespace, workflow: workflowId, run: runId } = $page.params);
   $: showJson = $page.url.searchParams.has('json');
@@ -43,6 +47,7 @@
   let workflowError: NetworkError | null = null;
   let workflowRunController: AbortController;
   let refreshInterval: ReturnType<typeof setInterval> | null = null;
+  let lastWorkflowStatus: WorkflowStatus | null = null;
 
   const { copy, copied } = copyToClipboard();
 
@@ -165,10 +170,24 @@
     $timelineEvents = null;
     $workflowRun = initialWorkflowRun;
     workflowError = undefined;
+    lastWorkflowStatus = null;
     abortPolling();
     resetLastDataEncoderSuccess();
     clearInterval(refreshInterval);
     refreshInterval = null;
+  };
+
+  const celebrateWorkflowCompletionIfNeeded = (
+    status: WorkflowStatus | undefined,
+  ) => {
+    if (!shouldCelebrateWorkflowCompletion(lastWorkflowStatus, status)) {
+      if (status) {
+        lastWorkflowStatus = status;
+      }
+      return;
+    }
+    lastWorkflowStatus = status ?? null;
+    void fireWorkflowCompletionConfetti();
   };
 
   $: (runId, clearWorkflowData());
@@ -183,6 +202,7 @@
   };
 
   $: setCurrentEvents($fullEventHistory, $pauseLiveUpdates);
+  $: celebrateWorkflowCompletionIfNeeded($workflowRun.workflow?.status);
 
   onMount(() => {
     const sort = $page.url.searchParams.get('sort');
