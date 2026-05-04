@@ -32,6 +32,7 @@
   } from '$lib/stores/workflow-run';
   import type { NetworkError } from '$lib/types/global';
   import type { WorkflowExecution } from '$lib/types/workflows';
+  import { blastConfettiAcrossPage } from '$lib/utilities/confetti';
   import { copyToClipboard } from '$lib/utilities/copy-to-clipboard';
   import { decodeSingleReadablePayloadWithCodec } from '$lib/utilities/decode-payload';
   import { stringifyWithBigInt } from '$lib/utilities/parse-with-big-int';
@@ -175,6 +176,35 @@
 
   $: getWorkflowAndEventHistory(namespace, workflowId, runId);
   $: getOnlyWorkflowWithPendingActivities($refresh, $pauseLiveUpdates);
+
+  let previousWorkflowStatus: WorkflowExecution['status'] | null = null;
+  let previousWorkflowKey: string | null = null;
+
+  const celebrateOnCompletion = (
+    workflow: WorkflowExecution | null,
+    key: string,
+  ) => {
+    if (key !== previousWorkflowKey) {
+      previousWorkflowKey = key;
+      previousWorkflowStatus = workflow?.status ?? null;
+      return;
+    }
+
+    const nextStatus = workflow?.status ?? null;
+    if (
+      previousWorkflowStatus &&
+      previousWorkflowStatus !== 'Completed' &&
+      nextStatus === 'Completed'
+    ) {
+      blastConfettiAcrossPage();
+    }
+    previousWorkflowStatus = nextStatus;
+  };
+
+  $: celebrateOnCompletion(
+    $workflowRun.workflow,
+    `${namespace}/${workflowId}/${runId}`,
+  );
 
   const setCurrentEvents = (fullHistory, pause) => {
     if (!pause) {
