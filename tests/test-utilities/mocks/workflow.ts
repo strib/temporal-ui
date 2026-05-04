@@ -212,6 +212,16 @@ export const mockCompletedWorkflow = {
   },
 } satisfies WorkflowExecutionAPIResponse;
 
+export const mockRunningVersionOfCompletedWorkflow: WorkflowExecutionAPIResponse =
+  {
+    ...mockCompletedWorkflow,
+    workflowExecutionInfo: {
+      ...mockCompletedWorkflow.workflowExecutionInfo,
+      status: 'Running',
+      closeTime: null,
+    },
+  };
+
 export const mockResetWorkflow: WorkflowExecutionAPIResponse = {
   executionConfig: {
     taskQueue: {
