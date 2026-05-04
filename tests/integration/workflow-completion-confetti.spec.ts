@@ -41,10 +41,6 @@ test('blasts confetti when a workflow reaches completion', async ({ page }) => {
   await expect(page.getByTestId('workflow-status')).toHaveText('Running');
   await expect(page.getByTestId('workflow-completion-confetti')).toBeHidden();
 
-  await page.evaluate(() => {
-    window.dispatchEvent(new Event('focus'));
-  });
-
   await expect(page.getByTestId('workflow-status')).toHaveText('Completed');
   await expect(page.getByTestId('workflow-completion-confetti')).toBeVisible();
   await expect(
