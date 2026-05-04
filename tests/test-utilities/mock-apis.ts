@@ -52,6 +52,7 @@ export {
 export { mockWorkflowsApi, WORKFLOWS_API } from './mocks/workflows';
 export {
   mockWorkflowApi,
+  mockWorkflowApiSequence,
   mockWorkflowPauseApi,
   mockWorkflowUnpauseApi,
   WORKFLOW_API,
