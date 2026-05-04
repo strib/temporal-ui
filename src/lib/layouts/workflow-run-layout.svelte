@@ -32,6 +32,7 @@
   } from '$lib/stores/workflow-run';
   import type { NetworkError } from '$lib/types/global';
   import type { WorkflowExecution } from '$lib/types/workflows';
+  import { blastConfettiOnce } from '$lib/utilities/blast-confetti';
   import { copyToClipboard } from '$lib/utilities/copy-to-clipboard';
   import { decodeSingleReadablePayloadWithCodec } from '$lib/utilities/decode-payload';
   import { stringifyWithBigInt } from '$lib/utilities/parse-with-big-int';
@@ -183,6 +184,10 @@
   };
 
   $: setCurrentEvents($fullEventHistory, $pauseLiveUpdates);
+
+  $: if ($workflowRun.workflow?.status === 'Completed') {
+    blastConfettiOnce($workflowRun.workflow.runId);
+  }
 
   onMount(() => {
     const sort = $page.url.searchParams.get('sort');
