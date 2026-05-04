@@ -8,7 +8,6 @@
   import SkeletonWorkflow from '$lib/holocene/skeleton/workflow.svelte';
   import { translate } from '$lib/i18n/translate';
   import WorkflowHeader from '$lib/layouts/workflow-header.svelte';
-  import { Action } from '$lib/models/workflow-actions';
   import {
     fetchAllEvents,
     throttleRefresh,
@@ -31,10 +30,14 @@
     workflowRun,
   } from '$lib/stores/workflow-run';
   import type { NetworkError } from '$lib/types/global';
-  import type { WorkflowExecution } from '$lib/types/workflows';
+  import type { WorkflowExecution, WorkflowStatus } from '$lib/types/workflows';
   import { copyToClipboard } from '$lib/utilities/copy-to-clipboard';
   import { decodeSingleReadablePayloadWithCodec } from '$lib/utilities/decode-payload';
   import { stringifyWithBigInt } from '$lib/utilities/parse-with-big-int';
+  import {
+    blastWorkflowCompletionConfetti,
+    shouldCelebrateWorkflowCompletion,
+  } from '$lib/utilities/workflow-completion-confetti';
 
   $: ({ namespace, workflow: workflowId, run: runId } = $page.params);
   $: showJson = $page.url.searchParams.has('json');
@@ -43,6 +46,7 @@
   let workflowError: NetworkError | null = null;
   let workflowRunController: AbortController;
   let refreshInterval: ReturnType<typeof setInterval> | null = null;
+  let previousWorkflowStatus: WorkflowStatus | undefined = undefined;
 
   const { copy, copied } = copyToClipboard();
 
@@ -164,6 +168,7 @@
   const clearWorkflowData = () => {
     $timelineEvents = null;
     $workflowRun = initialWorkflowRun;
+    previousWorkflowStatus = undefined;
     workflowError = undefined;
     abortPolling();
     resetLastDataEncoderSuccess();
@@ -183,6 +188,14 @@
   };
 
   $: setCurrentEvents($fullEventHistory, $pauseLiveUpdates);
+
+  $: {
+    const status = $workflowRun.workflow?.status ?? null;
+    if (shouldCelebrateWorkflowCompletion(previousWorkflowStatus, status)) {
+      blastWorkflowCompletionConfetti();
+    }
+    previousWorkflowStatus = status ?? undefined;
+  }
 
   onMount(() => {
     const sort = $page.url.searchParams.get('sort');
