@@ -318,6 +318,21 @@ export const mockWorkflowApi = (
   });
 };
 
+export const mockWorkflowApiSequence = (
+  page: Page,
+  workflows: WorkflowExecutionAPIResponse[],
+) => {
+  let requestCount = 0;
+  return page.route(WORKFLOW_API, (route) => {
+    const workflow =
+      workflows[Math.min(requestCount, workflows.length - 1)] ?? mockWorkflow;
+    requestCount += 1;
+    return route.fulfill({
+      json: workflow,
+    });
+  });
+};
+
 export const mockWorkflowResetApi = (page: Page) => {
   return page.route(WORKFLOW_RESET_API, (route) => {
     return route.fulfill({
