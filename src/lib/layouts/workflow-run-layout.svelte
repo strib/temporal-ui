@@ -4,6 +4,7 @@
   import { page } from '$app/stores';
 
   import WorkflowError from '$lib/components/workflow/workflow-error.svelte';
+  import WorkflowCompletionConfetti from '$lib/components/workflow-completion-confetti.svelte';
   import CopyButton from '$lib/holocene/copyable/button.svelte';
   import SkeletonWorkflow from '$lib/holocene/skeleton/workflow.svelte';
   import { translate } from '$lib/i18n/translate';
@@ -35,6 +36,7 @@
   import { copyToClipboard } from '$lib/utilities/copy-to-clipboard';
   import { decodeSingleReadablePayloadWithCodec } from '$lib/utilities/decode-payload';
   import { stringifyWithBigInt } from '$lib/utilities/parse-with-big-int';
+  import { shouldCelebrateWorkflowCompletion } from '$lib/utilities/should-celebrate-workflow-completion';
 
   $: ({ namespace, workflow: workflowId, run: runId } = $page.params);
   $: showJson = $page.url.searchParams.has('json');
@@ -43,6 +45,11 @@
   let workflowError: NetworkError | null = null;
   let workflowRunController: AbortController;
   let refreshInterval: ReturnType<typeof setInterval> | null = null;
+  let completionConfettiVisible = false;
+  let completionConfettiKey = 0;
+  let completionConfettiTimeout: ReturnType<typeof setTimeout> | null = null;
+  let previousWorkflowStatus: WorkflowExecution['status'] | undefined =
+    undefined;
 
   const { copy, copied } = copyToClipboard();
 
@@ -161,11 +168,31 @@
     }
   };
 
+  const clearCompletionConfetti = () => {
+    completionConfettiVisible = false;
+    if (completionConfettiTimeout) {
+      clearTimeout(completionConfettiTimeout);
+      completionConfettiTimeout = null;
+    }
+  };
+
+  const celebrateWorkflowCompletion = () => {
+    clearCompletionConfetti();
+    completionConfettiKey += 1;
+    completionConfettiVisible = true;
+    completionConfettiTimeout = setTimeout(() => {
+      completionConfettiVisible = false;
+      completionConfettiTimeout = null;
+    }, 4500);
+  };
+
   const clearWorkflowData = () => {
     $timelineEvents = null;
     $workflowRun = initialWorkflowRun;
     workflowError = undefined;
     abortPolling();
+    clearCompletionConfetti();
+    previousWorkflowStatus = undefined;
     resetLastDataEncoderSuccess();
     clearInterval(refreshInterval);
     refreshInterval = null;
@@ -175,6 +202,20 @@
 
   $: getWorkflowAndEventHistory(namespace, workflowId, runId);
   $: getOnlyWorkflowWithPendingActivities($refresh, $pauseLiveUpdates);
+  $: {
+    const currentWorkflowStatus = $workflowRun.workflow?.status;
+
+    if (
+      shouldCelebrateWorkflowCompletion(
+        previousWorkflowStatus,
+        currentWorkflowStatus,
+      )
+    ) {
+      celebrateWorkflowCompletion();
+    }
+
+    previousWorkflowStatus = currentWorkflowStatus;
+  }
 
   const setCurrentEvents = (fullHistory, pause) => {
     if (!pause) {
@@ -215,6 +256,11 @@
 {:else if !$workflowRun.workflow}
   <SkeletonWorkflow />
 {:else}
+  {#if completionConfettiVisible}
+    {#key completionConfettiKey}
+      <WorkflowCompletionConfetti />
+    {/key}
+  {/if}
   <WorkflowHeader />
   <slot />
 {/if}
