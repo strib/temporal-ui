@@ -7,6 +7,7 @@
   import WorkflowDetails from '$lib/components/lines-and-dots/workflow-details.svelte';
   import { timestamp } from '$lib/components/timestamp.svelte';
   import WorkflowCallStackError from '$lib/components/workflow/workflow-call-stack-error.svelte';
+  import WorkflowCompletionConfetti from '$lib/components/workflow/workflow-completion-confetti.svelte';
   import WorkflowActions from '$lib/components/workflow-actions.svelte';
   import WorkflowStatus from '$lib/components/workflow-status.svelte';
   import Alert from '$lib/holocene/alert.svelte';
@@ -126,6 +127,7 @@
   </div>
 </div>
 <header class="flex flex-col gap-4">
+  <WorkflowCompletionConfetti status={workflow?.status} />
   <div class="flex flex-col items-center justify-between gap-4 xl:flex-row">
     <div
       class="flex w-full flex-col items-start gap-4 xl:flex-row xl:items-center"
