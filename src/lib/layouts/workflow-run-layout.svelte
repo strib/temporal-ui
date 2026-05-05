@@ -3,12 +3,12 @@
 
   import { page } from '$app/stores';
 
+  import WorkflowCompletionConfetti from '$lib/components/workflow/workflow-completion-confetti.svelte';
   import WorkflowError from '$lib/components/workflow/workflow-error.svelte';
   import CopyButton from '$lib/holocene/copyable/button.svelte';
   import SkeletonWorkflow from '$lib/holocene/skeleton/workflow.svelte';
   import { translate } from '$lib/i18n/translate';
   import WorkflowHeader from '$lib/layouts/workflow-header.svelte';
-  import { Action } from '$lib/models/workflow-actions';
   import {
     fetchAllEvents,
     throttleRefresh,
@@ -24,10 +24,13 @@
     pauseLiveUpdates,
     timelineEvents,
   } from '$lib/stores/events';
+  import type {
+    RefreshAction,
+    WorkflowRunWithWorkers,
+  } from '$lib/stores/workflow-run';
   import {
     initialWorkflowRun,
     refresh,
-    type RefreshAction,
     workflowRun,
   } from '$lib/stores/workflow-run';
   import type { NetworkError } from '$lib/types/global';
@@ -35,6 +38,7 @@
   import { copyToClipboard } from '$lib/utilities/copy-to-clipboard';
   import { decodeSingleReadablePayloadWithCodec } from '$lib/utilities/decode-payload';
   import { stringifyWithBigInt } from '$lib/utilities/parse-with-big-int';
+  import { shouldCelebrateWorkflowCompletion } from '$lib/utilities/workflow-completion-confetti';
 
   $: ({ namespace, workflow: workflowId, run: runId } = $page.params);
   $: showJson = $page.url.searchParams.has('json');
@@ -43,6 +47,7 @@
   let workflowError: NetworkError | null = null;
   let workflowRunController: AbortController;
   let refreshInterval: ReturnType<typeof setInterval> | null = null;
+  let completionConfettiTrigger = 0;
 
   const { copy, copied } = copyToClipboard();
 
@@ -76,6 +81,19 @@
     }
   };
 
+  const setWorkflowRun = (nextWorkflowRun: WorkflowRunWithWorkers) => {
+    if (
+      shouldCelebrateWorkflowCompletion(
+        $workflowRun.workflow?.status,
+        nextWorkflowRun.workflow?.status,
+      )
+    ) {
+      completionConfettiTrigger += 1;
+    }
+
+    $workflowRun = nextWorkflowRun;
+  };
+
   const getWorkflowAndEventHistory = async (
     namespace: string,
     workflowId: string,
@@ -102,7 +120,7 @@
     const { taskQueue } = workflow;
     const workers = await getPollers({ queue: taskQueue, namespace });
 
-    $workflowRun = { ...$workflowRun, workflow, workers, workersLoaded: true };
+    setWorkflowRun({ ...$workflowRun, workflow, workers, workersLoaded: true });
 
     workflowRunController = new AbortController();
 
@@ -150,7 +168,7 @@
         workflowError = error;
         return;
       }
-      $workflowRun.workflow = workflow;
+      setWorkflowRun({ ...$workflowRun, workflow });
     }
   };
 
@@ -171,7 +189,7 @@
     refreshInterval = null;
   };
 
-  $: (runId, clearWorkflowData());
+  $: if (runId) clearWorkflowData();
 
   $: getWorkflowAndEventHistory(namespace, workflowId, runId);
   $: getOnlyWorkflowWithPendingActivities($refresh, $pauseLiveUpdates);
@@ -215,6 +233,7 @@
 {:else if !$workflowRun.workflow}
   <SkeletonWorkflow />
 {:else}
+  <WorkflowCompletionConfetti fire={completionConfettiTrigger} />
   <WorkflowHeader />
   <slot />
 {/if}
