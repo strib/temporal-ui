@@ -7,6 +7,7 @@
   import WorkflowDetails from '$lib/components/lines-and-dots/workflow-details.svelte';
   import { timestamp } from '$lib/components/timestamp.svelte';
   import WorkflowCallStackError from '$lib/components/workflow/workflow-call-stack-error.svelte';
+  import WorkflowCompletionConfetti from '$lib/components/workflow/workflow-completion-confetti.svelte';
   import WorkflowActions from '$lib/components/workflow-actions.svelte';
   import WorkflowStatus from '$lib/components/workflow-status.svelte';
   import Alert from '$lib/holocene/alert.svelte';
@@ -101,6 +102,7 @@
   const sharedFilterParams = $derived(getSharedFilterParams(page.url));
 </script>
 
+<WorkflowCompletionConfetti runId={workflow?.runId} status={workflow?.status} />
 <div class="flex items-center justify-between">
   <div class="flex items-center gap-2">
     <Link
