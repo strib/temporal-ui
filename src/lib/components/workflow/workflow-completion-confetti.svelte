@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { browser } from 'esm-env';
+  import { BROWSER } from 'esm-env';
   import { onDestroy } from 'svelte';
 
   interface Props {
@@ -38,7 +38,7 @@
 
   const prefersReducedMotion = (): boolean => {
     return (
-      browser && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      BROWSER && window.matchMedia('(prefers-reduced-motion: reduce)').matches
     );
   };
 
@@ -123,7 +123,7 @@
   };
 
   const celebrate = (): void => {
-    if (!browser || !canvas || prefersReducedMotion()) {
+    if (!BROWSER || !canvas || prefersReducedMotion()) {
       return;
     }
 
