@@ -3,13 +3,12 @@
 
   import { page } from '$app/stores';
 
-  import WorkflowError from '$lib/components/workflow/workflow-error.svelte';
   import CompletionConfetti from '$lib/components/workflow/completion-confetti.svelte';
+  import WorkflowError from '$lib/components/workflow/workflow-error.svelte';
   import CopyButton from '$lib/holocene/copyable/button.svelte';
   import SkeletonWorkflow from '$lib/holocene/skeleton/workflow.svelte';
   import { translate } from '$lib/i18n/translate';
   import WorkflowHeader from '$lib/layouts/workflow-header.svelte';
-  import { Action } from '$lib/models/workflow-actions';
   import {
     fetchAllEvents,
     throttleRefresh,
@@ -179,7 +178,9 @@
     refreshInterval = null;
   };
 
-  $: (runId, clearWorkflowData());
+  $: if (runId) {
+    clearWorkflowData();
+  }
 
   $: getWorkflowAndEventHistory(namespace, workflowId, runId);
   $: getOnlyWorkflowWithPendingActivities($refresh, $pauseLiveUpdates);

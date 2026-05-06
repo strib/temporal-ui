@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { browser } from '$app/environment';
+  import { BROWSER } from 'esm-env';
 
   type Props = {
     trigger: number;
@@ -55,7 +55,7 @@
   };
 
   const blast = () => {
-    if (!browser || prefersReducedMotion()) return;
+    if (!BROWSER || prefersReducedMotion()) return;
 
     if (clearTimer) clearTimeout(clearTimer);
 
