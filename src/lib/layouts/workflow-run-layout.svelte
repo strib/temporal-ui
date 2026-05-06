@@ -4,6 +4,7 @@
   import { page } from '$app/stores';
 
   import WorkflowError from '$lib/components/workflow/workflow-error.svelte';
+  import WorkflowCompletionConfetti from '$lib/components/workflow-completion-confetti.svelte';
   import CopyButton from '$lib/holocene/copyable/button.svelte';
   import SkeletonWorkflow from '$lib/holocene/skeleton/workflow.svelte';
   import { translate } from '$lib/i18n/translate';
@@ -35,6 +36,10 @@
   import { copyToClipboard } from '$lib/utilities/copy-to-clipboard';
   import { decodeSingleReadablePayloadWithCodec } from '$lib/utilities/decode-payload';
   import { stringifyWithBigInt } from '$lib/utilities/parse-with-big-int';
+  import {
+    shouldCelebrateWorkflowCompletion,
+    workflowCompletionSnapshot,
+  } from '$lib/utilities/workflow-completion-confetti';
 
   $: ({ namespace, workflow: workflowId, run: runId } = $page.params);
   $: showJson = $page.url.searchParams.has('json');
@@ -43,11 +48,29 @@
   let workflowError: NetworkError | null = null;
   let workflowRunController: AbortController;
   let refreshInterval: ReturnType<typeof setInterval> | null = null;
+  let completionConfettiBlast = 0;
+  let previousWorkflowCompletion = workflowCompletionSnapshot(null);
 
   const { copy, copied } = copyToClipboard();
 
   const handleCopy = (e: Event) => {
     copy(e, stringifyWithBigInt(fullJson));
+  };
+
+  const updateWorkflowRun = (workflow: WorkflowExecution): void => {
+    const currentWorkflowCompletion = workflowCompletionSnapshot(workflow);
+
+    if (
+      shouldCelebrateWorkflowCompletion(
+        previousWorkflowCompletion,
+        currentWorkflowCompletion,
+      )
+    ) {
+      completionConfettiBlast += 1;
+    }
+
+    previousWorkflowCompletion = currentWorkflowCompletion;
+    $workflowRun.workflow = workflow;
   };
 
   const decodeUserMetadata = async (workflow: WorkflowExecution) => {
@@ -102,7 +125,8 @@
     const { taskQueue } = workflow;
     const workers = await getPollers({ queue: taskQueue, namespace });
 
-    $workflowRun = { ...$workflowRun, workflow, workers, workersLoaded: true };
+    $workflowRun = { ...$workflowRun, workers, workersLoaded: true };
+    updateWorkflowRun(workflow);
 
     workflowRunController = new AbortController();
 
@@ -150,7 +174,7 @@
         workflowError = error;
         return;
       }
-      $workflowRun.workflow = workflow;
+      updateWorkflowRun(workflow);
     }
   };
 
@@ -164,6 +188,7 @@
   const clearWorkflowData = () => {
     $timelineEvents = null;
     $workflowRun = initialWorkflowRun;
+    previousWorkflowCompletion = workflowCompletionSnapshot(null);
     workflowError = undefined;
     abortPolling();
     resetLastDataEncoderSuccess();
@@ -215,6 +240,7 @@
 {:else if !$workflowRun.workflow}
   <SkeletonWorkflow />
 {:else}
+  <WorkflowCompletionConfetti blast={completionConfettiBlast} />
   <WorkflowHeader />
   <slot />
 {/if}
