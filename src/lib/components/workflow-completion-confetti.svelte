@@ -65,8 +65,8 @@
     };
   };
 
-  const blast = (): void => {
-    if (!BROWSER || !blastKey) return;
+  const blast = (key: number): void => {
+    if (!BROWSER || !key) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
     const viewportWidth = window.innerWidth || 1200;
@@ -82,7 +82,7 @@
   };
 
   $effect(() => {
-    blast();
+    blast(blastKey);
   });
 
   onDestroy(() => {

@@ -28,19 +28,17 @@ const completedWorkflow = {
 const workflowUrl = `/namespaces/default/workflows/${workflowId}/${runId}/history`;
 
 test('blasts confetti when a workflow reaches completion', async ({ page }) => {
-  let workflowRequestCount = 0;
+  let completeNextFetch = false;
 
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.clock.install();
   await Promise.all([
     mockNamespaceApis(page),
     mockEventHistoryApi(page),
     mockTaskQueuesApi(page),
     page.route(WORKFLOW_API, (route) => {
-      workflowRequestCount += 1;
-
       return route.fulfill({
-        json:
-          workflowRequestCount === 1 ? mockRunningWorkflow : completedWorkflow,
+        json: completeNextFetch ? completedWorkflow : mockRunningWorkflow,
       });
     }),
   ]);
@@ -50,6 +48,7 @@ test('blasts confetti when a workflow reaches completion', async ({ page }) => {
   await expect(page.getByTestId('workflow-status')).toContainText('Running');
   await expect(page.getByTestId('workflow-completion-confetti')).toHaveCount(0);
 
+  completeNextFetch = true;
   await page.clock.fastForward(10_000);
 
   await expect(page.getByTestId('workflow-status')).toContainText('Completed');
