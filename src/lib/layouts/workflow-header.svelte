@@ -101,8 +101,8 @@
   const linkCount = $derived(outboundLinks + inboundLinks);
   const sharedFilterParams = $derived(getSharedFilterParams(page.url));
 
-  let previousStatus: string | undefined = $state();
-  let previousRunId: string | undefined = $state();
+  let previousStatus: string | undefined;
+  let previousRunId: string | undefined;
   $effect(() => {
     const status = workflow?.status;
     const currentRunId = workflow?.runId;
