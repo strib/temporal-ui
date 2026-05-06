@@ -26,6 +26,7 @@
   import { workflowRun } from '$lib/stores/workflow-run';
   import { workflowsSearchParams } from '$lib/stores/workflows';
   import { isCancelInProgress } from '$lib/utilities/cancel-in-progress';
+  import { blastConfetti } from '$lib/utilities/confetti';
   import { isWorkflowDelayed } from '$lib/utilities/delayed-workflows';
   import { getSharedFilterParams } from '$lib/utilities/event-filter-params';
   import {
@@ -99,6 +100,23 @@
   );
   const linkCount = $derived(outboundLinks + inboundLinks);
   const sharedFilterParams = $derived(getSharedFilterParams(page.url));
+
+  let previousStatus: string | undefined = $state();
+  let previousRunId: string | undefined = $state();
+  $effect(() => {
+    const status = workflow?.status;
+    const currentRunId = workflow?.runId;
+    if (
+      status === 'Completed' &&
+      previousStatus &&
+      previousStatus !== 'Completed' &&
+      previousRunId === currentRunId
+    ) {
+      void blastConfetti();
+    }
+    previousStatus = status;
+    previousRunId = currentRunId;
+  });
 </script>
 
 <div class="flex items-center justify-between">
