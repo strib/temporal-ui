@@ -6,6 +6,7 @@
   import CodecServerErrorBanner from '$lib/components/codec-server-error-banner.svelte';
   import WorkflowDetails from '$lib/components/lines-and-dots/workflow-details.svelte';
   import { timestamp } from '$lib/components/timestamp.svelte';
+  import WorkflowCompletionConfetti from '$lib/components/workflow-completion-confetti.svelte';
   import WorkflowCallStackError from '$lib/components/workflow/workflow-call-stack-error.svelte';
   import WorkflowActions from '$lib/components/workflow-actions.svelte';
   import WorkflowStatus from '$lib/components/workflow-status.svelte';
@@ -25,6 +26,7 @@
   import { resetWorkflows } from '$lib/stores/reset-workflows';
   import { workflowRun } from '$lib/stores/workflow-run';
   import { workflowsSearchParams } from '$lib/stores/workflows';
+  import type { WorkflowStatus as WorkflowStatusType } from '$lib/types/workflows';
   import { isCancelInProgress } from '$lib/utilities/cancel-in-progress';
   import { isWorkflowDelayed } from '$lib/utilities/delayed-workflows';
   import { getSharedFilterParams } from '$lib/utilities/event-filter-params';
@@ -99,7 +101,42 @@
   );
   const linkCount = $derived(outboundLinks + inboundLinks);
   const sharedFilterParams = $derived(getSharedFilterParams(page.url));
+  const workflowKey = $derived(
+    workflow ? `${namespace}/${workflow.id}/${workflow.runId}` : '',
+  );
+
+  let previousWorkflowKey = '';
+  let previousWorkflowStatus: WorkflowStatusType | undefined;
+  let completionConfettiKey = $state(0);
+
+  $effect(() => {
+    const currentStatus = workflow?.status;
+
+    if (!workflowKey) {
+      previousWorkflowKey = '';
+      previousWorkflowStatus = undefined;
+      return;
+    }
+
+    if (workflowKey !== previousWorkflowKey) {
+      previousWorkflowKey = workflowKey;
+      previousWorkflowStatus = currentStatus;
+      return;
+    }
+
+    if (
+      currentStatus === 'Completed' &&
+      previousWorkflowStatus &&
+      previousWorkflowStatus !== 'Completed'
+    ) {
+      completionConfettiKey += 1;
+    }
+
+    previousWorkflowStatus = currentStatus;
+  });
 </script>
+
+<WorkflowCompletionConfetti blastKey={completionConfettiKey} />
 
 <div class="flex items-center justify-between">
   <div class="flex items-center gap-2">
