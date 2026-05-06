@@ -1,7 +1,6 @@
 <script lang="ts">
+  import { BROWSER } from 'esm-env';
   import { onDestroy } from 'svelte';
-
-  import { browser } from '$app/environment';
 
   type ConfettiPiece = {
     id: number;
@@ -67,7 +66,7 @@
   };
 
   const blast = (): void => {
-    if (!browser || !blastKey) return;
+    if (!BROWSER || !blastKey) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
     const viewportWidth = window.innerWidth || 1200;

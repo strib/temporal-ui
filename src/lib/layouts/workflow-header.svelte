@@ -6,9 +6,9 @@
   import CodecServerErrorBanner from '$lib/components/codec-server-error-banner.svelte';
   import WorkflowDetails from '$lib/components/lines-and-dots/workflow-details.svelte';
   import { timestamp } from '$lib/components/timestamp.svelte';
-  import WorkflowCompletionConfetti from '$lib/components/workflow-completion-confetti.svelte';
   import WorkflowCallStackError from '$lib/components/workflow/workflow-call-stack-error.svelte';
   import WorkflowActions from '$lib/components/workflow-actions.svelte';
+  import WorkflowCompletionConfetti from '$lib/components/workflow-completion-confetti.svelte';
   import WorkflowStatus from '$lib/components/workflow-status.svelte';
   import Alert from '$lib/holocene/alert.svelte';
   import Badge from '$lib/holocene/badge.svelte';

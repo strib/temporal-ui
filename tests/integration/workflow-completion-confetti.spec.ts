@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test';
 
 import type { WorkflowExecutionAPIResponse } from '$src/lib/types/workflows';
-
 import {
   mockEventHistoryApi,
   mockNamespaceApis,
