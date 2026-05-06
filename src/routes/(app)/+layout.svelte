@@ -5,12 +5,12 @@
   import { page, updated } from '$app/state';
 
   import BottomNavigation from '$lib/components/bottom-nav.svelte';
-  import WorkflowCompletionConfetti from '$lib/components/workflow-completion-confetti.svelte';
   import DataEncoderSettings from '$lib/components/data-encoder-settings.svelte';
   import NamespacePicker from '$lib/components/namespace-picker.svelte';
   import SideNavigation from '$lib/components/side-nav.svelte';
   import SkipNavigation from '$lib/components/skip-nav.svelte';
   import TopNavigation from '$lib/components/top-nav.svelte';
+  import WorkflowCompletionConfetti from '$lib/components/workflow-completion-confetti.svelte';
   import ErrorBoundary from '$lib/holocene/error-boundary.svelte';
   import Icon from '$lib/holocene/icon/icon.svelte';
   import MainContentContainer from '$lib/holocene/main-content-container.svelte';
