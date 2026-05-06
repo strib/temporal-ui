@@ -32,6 +32,7 @@
   } from '$lib/stores/workflow-run';
   import type { NetworkError } from '$lib/types/global';
   import type { WorkflowExecution } from '$lib/types/workflows';
+  import { blastConfetti } from '$lib/utilities/confetti';
   import { copyToClipboard } from '$lib/utilities/copy-to-clipboard';
   import { decodeSingleReadablePayloadWithCodec } from '$lib/utilities/decode-payload';
   import { stringifyWithBigInt } from '$lib/utilities/parse-with-big-int';
@@ -43,6 +44,7 @@
   let workflowError: NetworkError | null = null;
   let workflowRunController: AbortController;
   let refreshInterval: ReturnType<typeof setInterval> | null = null;
+  let previousWorkflowStatus: string | null | undefined = undefined;
 
   const { copy, copied } = copyToClipboard();
 
@@ -165,6 +167,7 @@
     $timelineEvents = null;
     $workflowRun = initialWorkflowRun;
     workflowError = undefined;
+    previousWorkflowStatus = undefined;
     abortPolling();
     resetLastDataEncoderSuccess();
     clearInterval(refreshInterval);
@@ -175,6 +178,19 @@
 
   $: getWorkflowAndEventHistory(namespace, workflowId, runId);
   $: getOnlyWorkflowWithPendingActivities($refresh, $pauseLiveUpdates);
+
+  const celebrateOnCompletion = (status: string | null | undefined) => {
+    if (
+      previousWorkflowStatus &&
+      previousWorkflowStatus !== 'Completed' &&
+      status === 'Completed'
+    ) {
+      blastConfetti();
+    }
+    previousWorkflowStatus = status;
+  };
+
+  $: celebrateOnCompletion($workflowRun.workflow?.status);
 
   const setCurrentEvents = (fullHistory, pause) => {
     if (!pause) {
