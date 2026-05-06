@@ -7,6 +7,7 @@
   import WorkflowDetails from '$lib/components/lines-and-dots/workflow-details.svelte';
   import { timestamp } from '$lib/components/timestamp.svelte';
   import WorkflowCallStackError from '$lib/components/workflow/workflow-call-stack-error.svelte';
+  import WorkflowCompletionConfetti from '$lib/components/workflow/workflow-completion-confetti.svelte';
   import WorkflowActions from '$lib/components/workflow-actions.svelte';
   import WorkflowStatus from '$lib/components/workflow-status.svelte';
   import Alert from '$lib/holocene/alert.svelte';
@@ -25,6 +26,7 @@
   import { resetWorkflows } from '$lib/stores/reset-workflows';
   import { workflowRun } from '$lib/stores/workflow-run';
   import { workflowsSearchParams } from '$lib/stores/workflows';
+  import type { WorkflowStatus as WorkflowExecutionStatus } from '$lib/types/workflows';
   import { isCancelInProgress } from '$lib/utilities/cancel-in-progress';
   import { isWorkflowDelayed } from '$lib/utilities/delayed-workflows';
   import { getSharedFilterParams } from '$lib/utilities/event-filter-params';
@@ -48,6 +50,7 @@
     routeForWorkflows,
     routeForWorkflowSearchAttributes,
   } from '$lib/utilities/route-for';
+  import { shouldTriggerWorkflowCompletionConfetti } from '$lib/utilities/workflow-completion-confetti';
   import { isWorkflowTaskFailure } from '$lib/utilities/workflow-task-failures';
 
   const {
@@ -99,7 +102,31 @@
   );
   const linkCount = $derived(outboundLinks + inboundLinks);
   const sharedFilterParams = $derived(getSharedFilterParams(page.url));
+  let confettiBursts = $state(0);
+  let previousWorkflowStatus: WorkflowExecutionStatus | undefined;
+  let previousRunId: string | undefined;
+
+  $effect(() => {
+    const nextStatus = workflow?.status ?? undefined;
+    const nextRunId = workflow?.runId;
+
+    if (
+      shouldTriggerWorkflowCompletionConfetti({
+        previousStatus: previousWorkflowStatus,
+        nextStatus,
+        previousRunId,
+        nextRunId,
+      })
+    ) {
+      confettiBursts += 1;
+    }
+
+    previousWorkflowStatus = nextStatus;
+    previousRunId = nextRunId;
+  });
 </script>
+
+<WorkflowCompletionConfetti burst={confettiBursts} />
 
 <div class="flex items-center justify-between">
   <div class="flex items-center gap-2">
