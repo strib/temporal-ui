@@ -4,6 +4,7 @@
   import { page } from '$app/stores';
 
   import WorkflowError from '$lib/components/workflow/workflow-error.svelte';
+  import CompletionConfetti from '$lib/components/workflow/completion-confetti.svelte';
   import CopyButton from '$lib/holocene/copyable/button.svelte';
   import SkeletonWorkflow from '$lib/holocene/skeleton/workflow.svelte';
   import { translate } from '$lib/i18n/translate';
@@ -35,6 +36,10 @@
   import { copyToClipboard } from '$lib/utilities/copy-to-clipboard';
   import { decodeSingleReadablePayloadWithCodec } from '$lib/utilities/decode-payload';
   import { stringifyWithBigInt } from '$lib/utilities/parse-with-big-int';
+  import {
+    getWorkflowCompletionTransition,
+    initialWorkflowCompletionTracker,
+  } from '$lib/utilities/workflow-completion-transition';
 
   $: ({ namespace, workflow: workflowId, run: runId } = $page.params);
   $: showJson = $page.url.searchParams.has('json');
@@ -43,6 +48,8 @@
   let workflowError: NetworkError | null = null;
   let workflowRunController: AbortController;
   let refreshInterval: ReturnType<typeof setInterval> | null = null;
+  let completionTracker = initialWorkflowCompletionTracker;
+  let confettiTrigger = 0;
 
   const { copy, copied } = copyToClipboard();
 
@@ -165,6 +172,7 @@
     $timelineEvents = null;
     $workflowRun = initialWorkflowRun;
     workflowError = undefined;
+    completionTracker = initialWorkflowCompletionTracker;
     abortPolling();
     resetLastDataEncoderSuccess();
     clearInterval(refreshInterval);
@@ -175,6 +183,24 @@
 
   $: getWorkflowAndEventHistory(namespace, workflowId, runId);
   $: getOnlyWorkflowWithPendingActivities($refresh, $pauseLiveUpdates);
+  $: {
+    const trackedWorkflow = $workflowRun.workflow
+      ? {
+          runId: $workflowRun.workflow.runId,
+          status: $workflowRun.workflow.status,
+        }
+      : null;
+    const transition = getWorkflowCompletionTransition(
+      completionTracker,
+      trackedWorkflow,
+    );
+
+    completionTracker = transition.next;
+
+    if (transition.shouldCelebrate) {
+      confettiTrigger = Date.now();
+    }
+  }
 
   const setCurrentEvents = (fullHistory, pause) => {
     if (!pause) {
@@ -215,6 +241,7 @@
 {:else if !$workflowRun.workflow}
   <SkeletonWorkflow />
 {:else}
+  <CompletionConfetti trigger={confettiTrigger} />
   <WorkflowHeader />
   <slot />
 {/if}
