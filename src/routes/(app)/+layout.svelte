@@ -5,6 +5,7 @@
   import { page, updated } from '$app/state';
 
   import BottomNavigation from '$lib/components/bottom-nav.svelte';
+  import WorkflowCompletionConfetti from '$lib/components/workflow-completion-confetti.svelte';
   import DataEncoderSettings from '$lib/components/data-encoder-settings.svelte';
   import NamespacePicker from '$lib/components/namespace-picker.svelte';
   import SideNavigation from '$lib/components/side-nav.svelte';
@@ -287,6 +288,7 @@
 </script>
 
 <DarkMode />
+<WorkflowCompletionConfetti />
 <SkipNavigation />
 
 <div class="flex w-screen flex-row">
