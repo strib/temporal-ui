@@ -37,9 +37,17 @@ test.describe('Workflow completion confetti', () => {
       mockTaskQueuesApi(page),
     ]);
 
+    let resolveCompletion: () => void;
+    const completionReady = new Promise<void>((resolve) => {
+      resolveCompletion = resolve;
+    });
     let workflowRequestCount = 0;
-    await page.route(WORKFLOW_API, (route) => {
+    await page.route(WORKFLOW_API, async (route) => {
       workflowRequestCount += 1;
+      if (workflowRequestCount > 1) {
+        await completionReady;
+      }
+
       return route.fulfill({
         json:
           workflowRequestCount === 1 ? mockRunningWorkflow : completedWorkflow,
@@ -48,6 +56,7 @@ test.describe('Workflow completion confetti', () => {
 
     await page.goto(workflowUrl);
     await expect(page.getByTestId('workflow-status')).toContainText('Running');
+    resolveCompletion();
     await expect(page.getByTestId('workflow-status')).toContainText(
       'Completed',
     );

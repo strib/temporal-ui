@@ -29,7 +29,7 @@
   const gravity = 0.22;
 
   let canvas: HTMLCanvasElement;
-  let context: CanvasRenderingContext2D;
+  let context: CanvasRenderingContext2D | null = null;
   let pieces: Confetti[] = [];
   let animationFrame: number;
   let startedAt = 0;
@@ -54,6 +54,11 @@
   };
 
   const resizeCanvas = () => {
+    if (!canvas) return;
+
+    context = context ?? canvas.getContext('2d');
+    if (!context) return;
+
     const ratio = window.devicePixelRatio || 1;
     const width = window.innerWidth;
     const height = window.innerHeight;
@@ -140,4 +145,4 @@
   aria-hidden="true"
   class="pointer-events-none fixed inset-0 z-[10000]"
   data-testid="workflow-completion-confetti"
-/>
+></canvas>
