@@ -26,6 +26,7 @@
   import { workflowRun } from '$lib/stores/workflow-run';
   import { workflowsSearchParams } from '$lib/stores/workflows';
   import { isCancelInProgress } from '$lib/utilities/cancel-in-progress';
+  import { celebrateWorkflowCompletion } from '$lib/utilities/confetti';
   import { isWorkflowDelayed } from '$lib/utilities/delayed-workflows';
   import { getSharedFilterParams } from '$lib/utilities/event-filter-params';
   import {
@@ -99,6 +100,16 @@
   );
   const linkCount = $derived(outboundLinks + inboundLinks);
   const sharedFilterParams = $derived(getSharedFilterParams(page.url));
+
+  $effect(() => {
+    if (workflow?.status !== 'Completed') return;
+    const runKey =
+      workflow?.runId && workflow?.id
+        ? `${workflow.id}:${workflow.runId}`
+        : (workflow?.runId ?? '');
+    if (!runKey) return;
+    void celebrateWorkflowCompletion(runKey);
+  });
 </script>
 
 <div class="flex items-center justify-between">
